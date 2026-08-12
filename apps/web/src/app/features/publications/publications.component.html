@@ -144,6 +144,9 @@
                   : "Sin fecha programada"
               }}
             </small>
+            @if (item.status === "failed") {
+              <span class="card-error">Ver detalle del error →</span>
+            }
           </div>
         </button>
       } @empty {
@@ -180,6 +183,55 @@
             <span>{{ tag }}</span>
           }
         </div>
+
+        @if (item.status === "failed") {
+          <section class="error-detail" aria-live="polite">
+            <div class="error-heading">
+              <span aria-hidden="true">!</span>
+              <div>
+                <strong>No se pudo completar la publicación</strong>
+                <small>El proceso se detuvo y no se marcó como publicado.</small>
+              </div>
+            </div>
+            <code>{{ item.errorMessage || "El proveedor no devolvió un detalle técnico. Revisa los logs del contenedor API." }}</code>
+            <dl>
+              <div><dt>ID</dt><dd>{{ item.id }}</dd></div>
+              <div><dt>Último intento</dt><dd>{{ item.updatedAt | date: "dd MMM yyyy, h:mm:ss a" }}</dd></div>
+            </dl>
+            <div class="error-actions">
+              <button class="secondary" type="button" (click)="copyError(item.id, item.errorMessage)">
+                {{ copiedErrorId() === item.id ? "✓ Copiado" : "Copiar detalle" }}
+              </button>
+              @if (item.approvedAt && item.musicTrackId) {
+                <button
+                  class="primary"
+                  [disabled]="store.busy()"
+                  [attr.aria-busy]="store.isLoading('retry')"
+                  (click)="store.retryPublication()"
+                >
+                  @if (store.isLoading("retry")) {
+                    <span class="spinner" aria-hidden="true"></span> Reintentando…
+                  } @else {
+                    ↻ Reintentar publicación
+                  }
+                </button>
+              } @else {
+                <button
+                  class="primary"
+                  [disabled]="store.busy()"
+                  [attr.aria-busy]="store.isLoading('regenerate')"
+                  (click)="store.act('regenerate')"
+                >
+                  @if (store.isLoading("regenerate")) {
+                    <span class="spinner" aria-hidden="true"></span> Regenerando…
+                  } @else {
+                    ↻ Regenerar contenido
+                  }
+                </button>
+              }
+            </div>
+          </section>
+        }
 
         @if (item.status === "pending_review") {
           <div class="actions">

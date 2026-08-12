@@ -1,16 +1,18 @@
-:host {
+app-root {
   display: block;
   min-height: 100vh;
-  color: #252a27;
+  color: #18241f;
 
-  --ink: #17231f;
-  --forest: #123f32;
-  --forest-2: #1e634b;
-  --mint: #d8eadf;
-  --cream: #f3eee3;
-  --paper: #fffdf8;
-  --gold: #d69b36;
-  --line: #d8d1c3;
+  --ink: #14251e;
+  --forest: #0d4736;
+  --forest-2: #167052;
+  --mint: #cce8d8;
+  --cream: #f3ead8;
+  --paper: #fffdf7;
+  --gold: #e4a62e;
+  --gold-soft: #f7d78f;
+  --line: #d6c8ad;
+  --danger: #a33d35;
 }
 
 .login-shell {
@@ -151,15 +153,19 @@ nav button,
 .shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 230px 1fr;
-  background: linear-gradient(135deg, #f6f1e7, #ebe5d9);
+  grid-template-columns: 248px minmax(0, 1fr);
+  background:
+    radial-gradient(circle at 78% 8%, #f2c86d26, transparent 26%),
+    linear-gradient(135deg, #f7f0e2, #e9dfcc);
 }
 
 .shell > aside {
   position: sticky;
   top: 0;
   height: 100vh;
-  background: linear-gradient(180deg, #123f32, #0b2821);
+  background:
+    radial-gradient(circle at 20% 0%, #25805c80, transparent 28%),
+    linear-gradient(180deg, #0d4736, #082a22);
   border: 0;
   color: #fff;
   box-shadow: 10px 0 35px #0b281f20;
@@ -251,7 +257,9 @@ nav button.active {
 }
 
 .workspace {
-  padding: 34px 38px 60px;
+  width: 100%;
+  max-width: 1680px;
+  padding: 34px clamp(20px, 3vw, 48px) 60px;
   min-width: 0;
 }
 
@@ -274,8 +282,8 @@ header > div > p:last-child {
 }
 
 .refresh {
-  border: 1px solid #daddd7;
-  background: #fff;
+  border: 1px solid #cfc2aa;
+  background: #fffdf8;
   padding: 9px 13px;
   border-radius: 10px;
   color: #59615c;
@@ -286,7 +294,7 @@ header > div > p:last-child {
   padding: 40px;
   text-align: center;
   color: #858c88;
-  background: #ffffff88;
+  background: #fffdf8cc;
   border: 1px dashed #d3d7d0;
   border-radius: 14px;
 }
@@ -301,6 +309,7 @@ header > div > p:last-child {
   border-radius: 11px;
   box-shadow: 0 14px 35px #18332755;
   font-size: 11px;
+  z-index: 1000;
 }
 
 .toast[data-kind="error"] {
@@ -346,6 +355,10 @@ button:disabled,
     position: static;
     height: auto;
     padding: 14px;
+  }
+
+  .account {
+    margin-top: 12px;
   }
 
   .shell nav {
