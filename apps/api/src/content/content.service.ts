@@ -286,6 +286,32 @@ export class ContentService {
     return this.withPreviewUrls(data);
   }
 
+  async retryPublication(userId: string, id: string) {
+    const current = await this.findOwned(userId, id);
+    if (current.status !== "failed") {
+      throw new BadRequestException("Solo se pueden reintentar publicaciones con error.");
+    }
+    if (!current.approved_at || !current.music_track_id || !(current.composed_image_path || current.image_path)) {
+      throw new BadRequestException("Esta publicación falló durante la generación. Regenera el contenido antes de publicarlo.");
+    }
+    const [{ data: track }, { data: connection }] = await Promise.all([
+      this.db.admin.from("music_tracks").select("id").eq("id", current.music_track_id).eq("active", true).eq("validation_status", "verified").maybeSingle(),
+      this.db.admin.from("tiktok_connections").select("id").eq("user_id", userId).maybeSingle(),
+    ]);
+    if (!track) throw new BadRequestException("La música usada ya no está disponible. Vuelve a aprobar y programar con otra pista.");
+    if (!connection) throw new BadRequestException("Vuelve a conectar TikTok antes de reintentar.");
+    const data = await this.transition(
+      userId,
+      id,
+      ["failed"],
+      "scheduled",
+      { scheduled_for: new Date().toISOString(), error_message: null },
+      "publish_retry_requested",
+    );
+    await this.syncBatchStatus(data.batch_id);
+    return this.withPreviewUrls(data);
+  }
+
   private async findOwned(userId: string, id: string) {
     const { data, error } = await this.db.admin
       .from("publications")

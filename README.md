@@ -119,6 +119,15 @@ El scheduler consulta cada 30 segundos las publicaciones vencidas. Antes de publ
 5. Inicializa Direct Post y transfiere el archivo.
 6. Registra `published` o `failed` con auditoría.
 
+### Diagnosticar una publicación con error
+
+1. Abre **Publicaciones** y entra en la pestaña **Con error**.
+2. Selecciona una tarjeta. El panel de revisión muestra la etapa, el mensaje técnico, el ID y la hora del último intento.
+3. Usa **Copiar detalle** para compartir el diagnóstico o **Reintentar publicación** después de corregir la causa.
+4. Para ver el mismo error en Docker ejecuta `docker compose logs api --tail=200`; cada entrada incluye el ID de la publicación.
+
+Los fallos se clasifican por etapa: descarga de recursos, composición con FFmpeg, almacenamiento del video o envío a TikTok. Los secretos se redactan antes de persistir el mensaje.
+
 ## Endpoints principales
 
 | Método | Ruta | Uso |
@@ -135,6 +144,7 @@ El scheduler consulta cada 30 segundos las publicaciones vencidas. Antes de publ
 | `PATCH` | `/api/publications/:id/reject` | Rechazar contenido |
 | `POST` | `/api/publications/:id/regenerate` | Crear otra frase e imagen |
 | `PATCH` | `/api/publications/:id/schedule` | Asignar fecha y música |
+| `POST` | `/api/publications/:id/retry` | Reprogramar inmediatamente una publicación fallida |
 | `GET` | `/api/tiktok/authorize-url` | Iniciar OAuth |
 | `POST` | `/api/tiktok/callback` | Guardar tokens cifrados |
 | `GET` | `/api/music` | Listar música verificada con preview temporal |

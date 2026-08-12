@@ -12,4 +12,5 @@ export class ContentController {
   @Patch(':id/reject') reject(@Req() req: AuthenticatedRequest, @Param('id') id: string) { return this.content.reject(req.user.id, id); }
   @Post(':id/regenerate') regenerate(@Req() req: AuthenticatedRequest, @Param('id') id: string) { return this.content.regenerate(req.user.id, id); }
   @Patch(':id/schedule') schedule(@Req() req: AuthenticatedRequest, @Param('id') id: string, @Body() dto: ScheduleDto) { return this.content.schedule(req.user.id, id, dto); }
+  @Post(':id/retry') retry(@Req() req: AuthenticatedRequest, @Param('id') id: string) { return this.content.retryPublication(req.user.id, id); }
 }

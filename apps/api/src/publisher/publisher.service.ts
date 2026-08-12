@@ -46,8 +46,10 @@ export class PublisherService {
       .select("id")
       .maybeSingle();
     if (!claimed.data) return;
+    let stage = "preparación";
     try {
       const imagePath = item.composed_image_path ?? item.image_path;
+      stage = "descarga de imagen y música";
       const [imageResult, musicResult] = await Promise.all([
         this.db.admin.storage.from("generated-images").download(imagePath),
         this.db.admin.storage
@@ -56,6 +58,7 @@ export class PublisherService {
       ]);
       if (imageResult.error) throw imageResult.error;
       if (musicResult.error) throw musicResult.error;
+      stage = "composición del video";
       const video = await this.media.compose(
         Buffer.from(await imageResult.data.arrayBuffer()),
         Buffer.from(await musicResult.data.arrayBuffer()),
@@ -63,10 +66,12 @@ export class PublisherService {
         item.brand_name ?? "IMPULSO IA",
       );
       const videoPath = `${item.user_id}/${item.id}.mp4`;
+      stage = "almacenamiento del video";
       const { error: uploadError } = await this.db.admin.storage
         .from("rendered-videos")
         .upload(videoPath, video, { contentType: "video/mp4", upsert: true });
       if (uploadError) throw uploadError;
+      stage = "envío a TikTok";
       const publishId = await this.tiktok.publishVideo(
         item.user_id,
         video,
@@ -93,12 +98,13 @@ export class PublisherService {
         });
       await this.syncBatch(item.batch_id);
     } catch (error) {
+      const failureMessage = this.publishFailure(stage, error);
+      this.logger.error(`Publicación ${item.id} falló: ${failureMessage}`);
       await this.db.admin
         .from("publications")
         .update({
           status: "failed",
-          error_message:
-            error instanceof Error ? error.message : "Publish failed",
+          error_message: failureMessage,
         })
         .eq("id", item.id);
       await this.db.admin
@@ -108,9 +114,28 @@ export class PublisherService {
           event_type: "publish_failed",
           from_status: "publishing",
           to_status: "failed",
+          metadata: { stage, error: failureMessage },
         });
       await this.syncBatch(item.batch_id);
     }
+  }
+
+  private publishFailure(stage: string, error: unknown) {
+    const source = error && typeof error === "object" ? error as Record<string, unknown> : null;
+    const rawMessage = error instanceof Error
+      ? error.message
+      : typeof source?.["message"] === "string"
+        ? source["message"]
+        : typeof error === "string"
+          ? error
+          : "El proveedor no devolvió un mensaje de error.";
+    const code = typeof source?.["code"] === "string" ? ` Código: ${source["code"]}.` : "";
+    const details = typeof source?.["details"] === "string" ? ` Detalle: ${source["details"]}.` : "";
+    const sanitized = `${rawMessage}${code}${details}`
+      .replace(/Bearer\s+[A-Za-z0-9._~-]+/gi, "Bearer [REDACTADO]")
+      .replace(/[A-Za-z0-9_-]{80,}/g, "[DATO_SENSIBLE_REDACTADO]")
+      .slice(0, 1400);
+    return `[${stage}] ${sanitized}`;
   }
 
   private async syncBatch(batchId: string | null | undefined) {

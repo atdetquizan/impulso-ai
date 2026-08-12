@@ -24,6 +24,7 @@ export type AsyncAction =
   | "approve"
   | "approveBatch"
   | "schedule"
+  | "retry"
   | "musicUpload"
   | "tiktok";
 type MessageKind = "success" | "error";
@@ -303,6 +304,22 @@ export class WorkspaceStore {
         });
         await this.load();
         this.flash("Publicación programada.");
+      } catch (error) {
+        this.flash(this.errorText(error), "error");
+      }
+    });
+  }
+
+  async retryPublication() {
+    const item = this.selected();
+    if (!item || item.status !== "failed") return;
+    await this.withLoading("retry", async () => {
+      try {
+        await this.api.retry(item.id);
+        this.filter.set("scheduled");
+        await this.load();
+        this.selected.set(this.items().find((row) => row.id === item.id) ?? null);
+        this.flash("Reintento programado. El publicador lo procesará en unos segundos.");
       } catch (error) {
         this.flash(this.errorText(error), "error");
       }

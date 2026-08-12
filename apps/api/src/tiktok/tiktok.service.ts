@@ -93,10 +93,17 @@ export class TikTokService {
         source_info: { source: 'FILE_UPLOAD', video_size: video.byteLength, chunk_size: video.byteLength, total_chunk_count: 1 },
       }),
     });
-    const payload = await init.json() as { data?: { publish_id: string; upload_url: string }; error?: { message?: string } };
-    if (!init.ok || !payload.data) throw new BadGatewayException(payload.error?.message ?? 'TikTok publish initialization failed');
+    const payload = await init.json() as { data?: { publish_id: string; upload_url: string }; error?: { code?: string; message?: string; log_id?: string } };
+    if (!init.ok || !payload.data) {
+      const code = payload.error?.code ? ` Código: ${payload.error.code}.` : '';
+      const logId = payload.error?.log_id ? ` Log TikTok: ${payload.error.log_id}.` : '';
+      throw new BadGatewayException(`${payload.error?.message ?? `TikTok rechazó la inicialización (${init.status})`}.${code}${logId}`);
+    }
     const upload = await fetch(payload.data.upload_url, { method: 'PUT', headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(video.byteLength), 'Content-Range': `bytes 0-${video.byteLength - 1}/${video.byteLength}` }, body: video as unknown as BodyInit });
-    if (!upload.ok) throw new BadGatewayException(`TikTok media upload failed: ${upload.status}`);
+    if (!upload.ok) {
+      const uploadDetail = (await upload.text()).slice(0, 500);
+      throw new BadGatewayException(`TikTok rechazó el archivo de video (${upload.status}). ${uploadDetail || 'Sin detalle adicional.'}`);
+    }
     return payload.data.publish_id;
   }
 

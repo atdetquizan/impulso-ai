@@ -17,7 +17,7 @@
   <div class="integration-grid">
     <article class="panel upload-panel">
       <h3>Añadir una pista</h3>
-      <p>Por ahora puedes subir música original, licenciada o generada con IA. FFprobe valida el formato y la duración antes de habilitarla.</p>
+      <p class="panel-intro">Sube audio original, licenciado o generado con IA. Validaremos formato y duración antes de habilitarlo.</p>
       <label>Nombre<input [(ngModel)]="store.musicName" placeholder="Ej. Amanecer sereno" /></label>
       <label>Origen<select [(ngModel)]="store.musicSource"><option value="uploaded">Original o licenciada</option><option value="ai_generated">Generada con IA</option></select></label>
       @if (store.musicSource === "ai_generated") {
@@ -33,11 +33,21 @@
     <div class="track-list">
       @for (track of store.musicTracks(); track track.id) {
         <article class="track-card">
-          <div class="track-icon">♫</div>
-          <div><strong>{{ track.name }}</strong><small>{{ track.durationSeconds }} s · {{ track.source === "ai_generated" ? "IA: " + track.aiProvider : "Original/licenciada" }}</small></div>
-          <span class="verified">✓ Verificada</span>
-          @if (track.previewUrl) { <audio controls preload="none" [src]="track.previewUrl"></audio> }
-          <p>{{ track.licenseNotes }}</p>
+          <div class="track-main">
+            <div class="track-icon">♫</div>
+            <div class="track-copy">
+              <strong>{{ track.name }}</strong>
+              <small>{{ track.durationSeconds }} s · {{ track.source === "ai_generated" ? "IA: " + track.aiProvider : "Original/licenciada" }}</small>
+            </div>
+          </div>
+          <div class="track-controls">
+            <span class="verified">✓ Verificada</span>
+            @if (track.previewUrl) { <audio controls preload="none" [src]="track.previewUrl"></audio> }
+          </div>
+          <details>
+            <summary>Ver licencia o permiso</summary>
+            <p>{{ track.licenseNotes }}</p>
+          </details>
         </article>
       } @empty {
         <div class="empty">No hay pistas utilizables. Sube la primera para poder programar.</div>

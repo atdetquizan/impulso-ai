@@ -141,6 +141,15 @@ export class PublicationsApiService {
       ),
     );
   }
+  async retry(id: string) {
+    return firstValueFrom(
+      this.http.post(
+        `${environment.apiUrl}/publications/${id}/retry`,
+        {},
+        this.options(),
+      ),
+    );
+  }
   async approveBatch(id: string) {
     const row = await firstValueFrom(
       this.http.patch<ApiPublication>(
