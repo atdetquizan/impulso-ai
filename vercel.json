@@ -3,11 +3,11 @@
   "services": {
     "frontend": {
       "root": ".",
-      "entrypoint": "apps/web/Dockerfile"
+      "entrypoint": "Dockerfile.frontend"
     },
     "api": {
       "root": ".",
-      "entrypoint": "apps/api/Dockerfile"
+      "entrypoint": "Dockerfile.api"
     }
   },
   "rewrites": [
