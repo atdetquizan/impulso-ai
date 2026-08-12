@@ -1,0 +1,60 @@
+:host {
+  display: block;
+}
+
+.integration-page {
+  margin-top: 25px;
+}
+
+.panel {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--paper);
+  box-shadow: 0 14px 35px #263d3212;
+}
+
+.panel h3 {
+  margin: 0 0 7px;
+  font-size: 18px;
+}
+
+.panel > p {
+  color: #68716c;
+  line-height: 1.55;
+}
+
+.verified {
+  padding: 5px 9px;
+  border-radius: 99px;
+  background: #d9eee1;
+  color: #1d6545;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.tiktok-panel {
+  max-width: 620px;
+  text-align: center;
+  margin: 35px auto;
+  padding: 45px;
+}
+
+.tiktok-mark {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 18px;
+  border-radius: 19px;
+  background: #151515;
+  color: #48e0d1;
+  font-size: 32px;
+  box-shadow: 7px 7px 0 #fb4c6b;
+}
+
+.disconnect {
+  margin-top: 15px;
+  padding: 11px 17px;
+  border-radius: 10px;
+}

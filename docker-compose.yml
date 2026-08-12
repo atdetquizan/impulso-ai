@@ -1,0 +1,28 @@
+services:
+  api:
+    image: impulso-api:local
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    env_file:
+      - apps/api/.env
+    environment:
+      PORT: 3000
+      FFMPEG_PATH: /usr/bin/ffmpeg
+      FFPROBE_PATH: /usr/bin/ffprobe
+      FFMPEG_FONT_PATH: /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+    init: true
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  # web:
+  #   image: impulso-web:local
+  #   build:
+  #     context: .
+  #     dockerfile: apps/web/Dockerfile
+  #   ports:
+  #     - "4200:80"
+  #   depends_on:
+  #     - api
+  #   restart: unless-stopped

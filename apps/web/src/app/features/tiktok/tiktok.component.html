@@ -1,0 +1,31 @@
+<header>
+  <div>
+    <p class="eyebrow">INTEGRACIONES</p>
+    <h1>Cuenta TikTok.</h1>
+    <p>Conecta y administra la cuenta que recibirá las publicaciones.</p>
+  </div>
+  <button class="refresh" [disabled]="store.busy()" (click)="store.loadIntegrations()">↻ Actualizar</button>
+</header>
+
+<section class="integration-page module-section">
+  <article class="panel tiktok-panel">
+    <div class="tiktok-mark">♪</div>
+    @if (!store.tiktok().configured) {
+      <h3>Falta configurar TikTok en el backend</h3>
+      <p>Agrega TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET y TIKTOK_REDIRECT_URI. El secret nunca se envía al navegador.</p>
+    } @else if (store.tiktok().connected) {
+      <span class="verified">✓ Conectada</span>
+      <h3>{{ store.tiktok().displayName || "Cuenta TikTok autorizada" }}</h3>
+      <p>La aplicación puede publicar piezas aprobadas. Los tokens se guardan cifrados y se renuevan automáticamente.</p>
+      <button class="danger disconnect" [disabled]="store.busy()" [attr.aria-busy]="store.isLoading('tiktok')" (click)="store.disconnectTikTok()">
+        @if (store.isLoading("tiktok")) { <span class="spinner spinner-dark"></span> Desconectando… } @else { Desconectar cuenta }
+      </button>
+    } @else {
+      <h3>Conecta la cuenta que publicará</h3>
+      <p>Inicia OAuth con la cuenta de TikTok destino y autoriza los permisos de publicación.</p>
+      <button class="primary" [disabled]="store.busy()" [attr.aria-busy]="store.isLoading('tiktok')" (click)="store.connectTikTok()">
+        @if (store.isLoading("tiktok")) { <span class="spinner"></span> Conectando… } @else { Conectar con TikTok }
+      </button>
+    }
+  </article>
+</section>

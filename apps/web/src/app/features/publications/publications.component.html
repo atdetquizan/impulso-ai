@@ -1,0 +1,291 @@
+<header>
+  <div>
+    <p class="eyebrow">CENTRO DE PUBLICACIONES</p>
+    <h1>Contenido con control humano.</h1>
+    <p>Genera, revisa, aprueba y programa cada publicación desde este módulo.</p>
+  </div>
+  <button
+    class="refresh"
+    [disabled]="store.busy()"
+    [attr.aria-busy]="store.isLoading('load')"
+    (click)="store.load()"
+  >
+    @if (store.isLoading("load")) {
+      <span class="spinner spinner-dark" aria-hidden="true"></span>
+      Actualizando…
+    } @else {
+      ↻ Actualizar
+    }
+  </button>
+</header>
+
+<section class="generator">
+  <div>
+    <span class="step">1</span>
+    <div>
+      <h2>Crear paquete con IA</h2>
+      <p>
+        Este formulario pertenece únicamente a Publicaciones. Cada imagen
+        aparecerá en la bandeja conforme termine de generarse.
+      </p>
+    </div>
+  </div>
+  <div class="fields">
+    <label>
+      Nombre del paquete
+      <input
+        [(ngModel)]="store.batchName"
+        placeholder="Ej. Motivación semanal"
+      />
+    </label>
+    <label class="brand-field">
+      Marca en la imagen
+      <input
+        [(ngModel)]="store.brandName"
+        maxlength="32"
+        placeholder="Ej. Impulso IA"
+      />
+    </label>
+    <label>
+      Tema
+      <input [(ngModel)]="store.theme" />
+    </label>
+    <label>
+      Tono
+      <select [(ngModel)]="store.tone">
+        <option value="cercano">Cercano y positivo</option>
+        <option value="energico">Directo y enérgico</option>
+        <option value="reflexivo">Reflexivo</option>
+      </select>
+    </label>
+    <label>
+      Cantidad
+      <select [(ngModel)]="store.count">
+        <option [ngValue]="2">2 publicaciones</option>
+        <option [ngValue]="3">3 publicaciones</option>
+      </select>
+    </label>
+    <button
+      class="primary"
+      [disabled]="store.busy()"
+      [attr.aria-busy]="store.isLoading('generate')"
+      (click)="store.generate()"
+    >
+      @if (store.isLoading("generate")) {
+        <span class="spinner" aria-hidden="true"></span> Generando imágenes…
+      } @else {
+        ✦ Generar paquete
+      }
+    </button>
+  </div>
+</section>
+
+@if (store.generationProgress(); as progress) {
+  <section class="live-generation" aria-live="polite">
+    <div>
+      <span class="spinner spinner-dark"></span>
+      <strong>
+        Creando imagen
+        {{ progress.current + 1 > progress.total ? progress.total : progress.current + 1 }}
+        de {{ progress.total }}
+      </strong>
+    </div>
+    <div class="live-bar">
+      <span [style.width.%]="(progress.current / progress.total) * 100"></span>
+    </div>
+    <small>
+      Los resultados aparecen debajo sin esperar a que concluya todo el lote.
+    </small>
+  </section>
+}
+
+<section class="inbox">
+  <div class="tabs">
+    @for (tab of store.tabs; track tab.value) {
+      <button
+        [disabled]="store.busy()"
+        [class.active]="store.filter() === tab.value"
+        (click)="store.filter.set(tab.value)"
+      >
+        {{ tab.label }} <b>{{ store.countStatus(tab.value) }}</b>
+      </button>
+    }
+  </div>
+
+  <div class="board">
+    <div class="cards">
+      @if (store.loading()) {
+        <div class="empty">Actualizando publicaciones…</div>
+      }
+      @for (item of store.filtered(); track item.id) {
+        <button
+          class="publication-card"
+          [disabled]="store.busy()"
+          [class.selected]="store.selected()?.id === item.id"
+          (click)="store.select(item)"
+        >
+          <div
+            class="thumb"
+            [style.background-image]="store.imageStyle(item)"
+          >
+            <span class="badge" [attr.data-status]="item.status">
+              {{ store.statusLabel(item.status) }}
+            </span>
+            @if (!item.composedImageUrl) {
+              <blockquote>“{{ item.quote }}”</blockquote>
+            }
+          </div>
+          <div class="card-copy">
+            <strong>{{ item.theme }}</strong>
+            <small>
+              {{
+                item.scheduledFor
+                  ? (item.scheduledFor | date: "dd MMM, h:mm a")
+                  : "Sin fecha programada"
+              }}
+            </small>
+          </div>
+        </button>
+      } @empty {
+        @if (!store.loading()) {
+          <div class="empty">No hay publicaciones en esta bandeja.</div>
+        }
+      }
+    </div>
+
+    <article class="review">
+      @if (store.selected(); as item) {
+        <div class="review-top">
+          <div>
+            <p class="eyebrow">REVISIÓN</p>
+            <h2>{{ store.statusLabel(item.status) }}</h2>
+          </div>
+          <span class="badge" [attr.data-status]="item.status">
+            {{ store.statusLabel(item.status) }}
+          </span>
+        </div>
+        <div class="phone" [style.background-image]="store.imageStyle(item)">
+          @if (!item.composedImageUrl) {
+            <div class="phone-brand">✦ {{ item.brandName }}</div>
+            <blockquote>“{{ item.quote }}”</blockquote>
+          }
+          <small>♫ Música seleccionada al programar</small>
+        </div>
+        <label>Frase generada</label>
+        <p class="generated-text">{{ item.quote }}</p>
+        <label>Descripción</label>
+        <p class="caption">{{ item.caption }}</p>
+        <div class="hashtags">
+          @for (tag of item.hashtags; track tag) {
+            <span>{{ tag }}</span>
+          }
+        </div>
+
+        @if (item.status === "pending_review") {
+          <div class="actions">
+            <button
+              class="secondary"
+              [disabled]="store.busy()"
+              [attr.aria-busy]="store.isLoading('regenerate')"
+              (click)="store.act('regenerate')"
+            >
+              @if (store.isLoading("regenerate")) {
+                <span class="spinner spinner-dark" aria-hidden="true"></span>
+              } @else {
+                ↻ Regenerar
+              }
+            </button>
+            <button
+              class="danger"
+              [disabled]="store.busy()"
+              [attr.aria-busy]="store.isLoading('reject')"
+              (click)="store.act('reject')"
+            >
+              @if (store.isLoading("reject")) {
+                <span class="spinner spinner-dark" aria-hidden="true"></span>
+              } @else {
+                Rechazar
+              }
+            </button>
+            <button
+              class="approve"
+              [disabled]="store.busy()"
+              [attr.aria-busy]="store.isLoading('approve')"
+              (click)="store.act('approve')"
+            >
+              @if (store.isLoading("approve")) {
+                <span class="spinner" aria-hidden="true"></span>
+              } @else {
+                ✓ Aprobar
+              }
+            </button>
+          </div>
+        }
+
+        @if (item.status === "approved") {
+          <div class="schedule-box">
+            <h3>Programar publicación</h3>
+            <label>
+              Fecha y hora
+              <input type="datetime-local" [(ngModel)]="store.scheduledFor" />
+            </label>
+            <label>
+              Música
+              <select [(ngModel)]="store.musicTrackId">
+                <option value="">Selecciona una pista licenciada</option>
+                @for (track of store.musicTracks(); track track.id) {
+                  <option [value]="track.id">
+                    {{ track.name }} · {{ track.durationSeconds }} s
+                  </option>
+                }
+              </select>
+            </label>
+            @if (store.musicTrackId) {
+              @for (track of store.musicTracks(); track track.id) {
+                @if (track.id === store.musicTrackId && track.previewUrl) {
+                  <audio
+                    class="schedule-audio"
+                    controls
+                    preload="none"
+                    [src]="track.previewUrl"
+                  ></audio>
+                }
+              }
+            }
+            <div class="schedule-checks">
+              <span [class.ok]="store.musicTracks().length">
+                {{ store.musicTracks().length ? "✓ Música verificada" : "! Falta música" }}
+              </span>
+              <span [class.ok]="store.tiktok().connected">
+                {{ store.tiktok().connected ? "✓ TikTok conectado" : "! Falta TikTok" }}
+              </span>
+            </div>
+            <button
+              class="primary"
+              [disabled]="
+                store.busy() ||
+                !store.tiktok().connected ||
+                !store.musicTracks().length
+              "
+              [attr.aria-busy]="store.isLoading('schedule')"
+              (click)="store.schedule()"
+            >
+              @if (store.isLoading("schedule")) {
+                <span class="spinner" aria-hidden="true"></span> Programando…
+              } @else {
+                Programar para TikTok
+              }
+            </button>
+          </div>
+        }
+        <p class="safety">
+          🔒 Nunca se programa ni publica sin aprobación registrada.
+        </p>
+      } @else {
+        <div class="empty review-empty">
+          Selecciona una publicación para revisarla.
+        </div>
+      }
+    </article>
+  </div>
+</section>

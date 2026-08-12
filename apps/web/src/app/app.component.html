@@ -1,0 +1,90 @@
+@if (!auth.initialized()) {
+  <main class="login-shell">
+    <section class="login-card">
+      <span class="logo">✦</span>
+      <p>Validando sesión…</p>
+    </section>
+  </main>
+} @else if (!auth.user()) {
+  <main class="login-shell">
+    <section class="login-card">
+      <span class="logo">✦</span>
+      <p class="eyebrow">IMPULSO IA</p>
+      <h1>Tu contenido motivacional, listo para inspirar.</h1>
+      <p>
+        Genera frases e imágenes, aprueba cada pieza y prográmala para TikTok
+        desde un solo lugar.
+      </p>
+      <label for="email">Correo electrónico</label>
+      <input
+        id="email"
+        type="email"
+        [(ngModel)]="email"
+        placeholder="tu@correo.com"
+        (keyup.enter)="emailValid() && login()"
+      />
+      <button
+        class="primary"
+        [disabled]="workspace.busy() || !emailValid()"
+        [attr.aria-busy]="workspace.isLoading('login')"
+        (click)="login()"
+      >
+        @if (workspace.isLoading("login")) {
+          <span class="spinner" aria-hidden="true"></span> Enviando enlace…
+        } @else {
+          Recibir enlace de acceso
+        }
+      </button>
+    </section>
+  </main>
+} @else {
+  <main class="shell">
+    <aside>
+      <div class="brand">
+        <span>✦</span><strong>Impulso <b>IA</b></strong>
+      </div>
+      <nav aria-label="Módulos principales">
+        <button routerLink="/publications" routerLinkActive="active">
+          ▤ Publicaciones
+        </button>
+        <button routerLink="/packages" routerLinkActive="active">
+          ▦ Paquetes de imágenes
+        </button>
+        <button routerLink="/music" routerLinkActive="active">♫ Música</button>
+        <button routerLink="/settings/tiktok" routerLinkActive="active">
+          ◉ Cuenta TikTok
+        </button>
+      </nav>
+      <div class="account">
+        <span>{{ auth.user()?.email?.slice(0, 2)?.toUpperCase() }}</span>
+        <small>{{ auth.user()?.email }}</small>
+        <button
+          [disabled]="workspace.busy()"
+          [attr.aria-busy]="workspace.isLoading('logout')"
+          (click)="logout()"
+        >
+          @if (workspace.isLoading("logout")) {
+            <span class="spinner spinner-dark" aria-hidden="true"></span>
+          } @else {
+            Salir
+          }
+        </button>
+      </div>
+    </aside>
+
+    <section class="workspace">
+      <router-outlet />
+    </section>
+  </main>
+}
+
+@if (workspace.message()) {
+  <div
+    class="toast"
+    [attr.data-kind]="workspace.messageKind()"
+    role="status"
+    aria-live="polite"
+  >
+    {{ workspace.message() }}
+  </div>
+}

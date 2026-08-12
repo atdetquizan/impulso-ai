@@ -1,0 +1,47 @@
+<header>
+  <div>
+    <p class="eyebrow">BIBLIOTECA DE AUDIO</p>
+    <h1>Música para tus publicaciones.</h1>
+    <p>Administra pistas verificadas antes de usarlas en una programación.</p>
+  </div>
+  <button class="refresh" [disabled]="store.busy()" (click)="store.loadIntegrations()">
+    ↻ Actualizar
+  </button>
+</header>
+
+<section class="integration-page module-section">
+  <div class="section-title">
+    <div><p class="eyebrow">PISTAS DISPONIBLES</p><h2>Música verificada</h2></div>
+    <small>{{ store.musicTracks().length }} pistas activas</small>
+  </div>
+  <div class="integration-grid">
+    <article class="panel upload-panel">
+      <h3>Añadir una pista</h3>
+      <p>Por ahora puedes subir música original, licenciada o generada con IA. FFprobe valida el formato y la duración antes de habilitarla.</p>
+      <label>Nombre<input [(ngModel)]="store.musicName" placeholder="Ej. Amanecer sereno" /></label>
+      <label>Origen<select [(ngModel)]="store.musicSource"><option value="uploaded">Original o licenciada</option><option value="ai_generated">Generada con IA</option></select></label>
+      @if (store.musicSource === "ai_generated") {
+        <label>Proveedor de IA<input [(ngModel)]="store.musicAiProvider" placeholder="Ej. Mubert, Loudly…" /></label>
+      }
+      <label>Licencia / permiso<textarea [(ngModel)]="store.musicLicense" placeholder="Describe el permiso de uso comercial"></textarea></label>
+      <label class="file-field">Archivo MP3, WAV o M4A<input type="file" accept="audio/mpeg,audio/wav,audio/mp4,.m4a" (change)="store.chooseMusicFile($event)" /></label>
+      <button class="primary" [disabled]="store.busy()" [attr.aria-busy]="store.isLoading('musicUpload')" (click)="store.uploadMusic()">
+        @if (store.isLoading("musicUpload")) { <span class="spinner"></span> Verificando… } @else { Verificar y guardar pista }
+      </button>
+    </article>
+
+    <div class="track-list">
+      @for (track of store.musicTracks(); track track.id) {
+        <article class="track-card">
+          <div class="track-icon">♫</div>
+          <div><strong>{{ track.name }}</strong><small>{{ track.durationSeconds }} s · {{ track.source === "ai_generated" ? "IA: " + track.aiProvider : "Original/licenciada" }}</small></div>
+          <span class="verified">✓ Verificada</span>
+          @if (track.previewUrl) { <audio controls preload="none" [src]="track.previewUrl"></audio> }
+          <p>{{ track.licenseNotes }}</p>
+        </article>
+      } @empty {
+        <div class="empty">No hay pistas utilizables. Sube la primera para poder programar.</div>
+      }
+    </div>
+  </div>
+</section>

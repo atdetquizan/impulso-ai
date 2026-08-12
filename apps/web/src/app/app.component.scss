@@ -1,0 +1,372 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  color: #252a27;
+
+  --ink: #17231f;
+  --forest: #123f32;
+  --forest-2: #1e634b;
+  --mint: #d8eadf;
+  --cream: #f3eee3;
+  --paper: #fffdf8;
+  --gold: #d69b36;
+  --line: #d8d1c3;
+}
+
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 18% 18%, #72ad8e66, transparent 33%),
+    radial-gradient(circle at 80% 75%, #e7b85b55, transparent 30%), #e9e1d3;
+}
+
+.login-card {
+  width: min(440px, calc(100% - 32px));
+  padding: 42px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: 0 24px 70px #203d3020;
+}
+
+.logo {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  background: linear-gradient(135deg, #246e52, #123f32);
+  color: #fff;
+  border-radius: 13px;
+}
+
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 1.7px;
+  font-weight: 800;
+  color: #7d8581;
+}
+
+.login-card h1,
+header h1,
+.section-title h2 {
+  font-family: Georgia, serif;
+  font-weight: 500;
+  line-height: 1.05;
+}
+
+.login-card h1 {
+  font-size: 36px;
+}
+
+.login-card > p:not(.eyebrow) {
+  color: #6d746f;
+  line-height: 1.6;
+}
+
+label {
+  display: grid;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 750;
+  color: #555d58;
+  margin-top: 14px;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #d9ddd6;
+  border-radius: 10px;
+  background: #fff;
+  color: #29312d;
+  outline: none;
+  font: inherit;
+}
+
+textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #2d7558;
+  box-shadow: 0 0 0 3px #2d755824;
+}
+
+.primary,
+.secondary,
+.danger,
+.approve,
+.refresh,
+nav button,
+.account button,
+.publication-card,
+.package-card,
+.package-images button {
+  transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
+}
+
+.primary {
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #246e52, #123f32);
+  color: #fff;
+  padding: 12px 16px;
+  font-weight: 750;
+  box-shadow: 0 8px 18px #173e3030;
+}
+
+.primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.secondary {
+  border: 1px solid #cdd3cb;
+  background: #fff;
+}
+
+.danger {
+  border: 1px solid #ddb8b2;
+  background: #fff7f6;
+  color: #873c34;
+}
+
+.approve {
+  border: 0;
+  background: #2f7354;
+  color: #fff;
+}
+
+.login-card .primary {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 230px 1fr;
+  background: linear-gradient(135deg, #f6f1e7, #ebe5d9);
+}
+
+.shell > aside {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  background: linear-gradient(180deg, #123f32, #0b2821);
+  border: 0;
+  color: #fff;
+  box-shadow: 10px 0 35px #0b281f20;
+  padding: 26px 17px;
+  display: flex;
+  flex-direction: column;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 8px 26px;
+  font-size: 18px;
+}
+
+.brand > span {
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 31px;
+  border-radius: 10px;
+  background: var(--gold);
+  color: #18382c;
+}
+
+.brand b {
+  color: #f0bf62;
+}
+
+nav {
+  display: grid;
+  gap: 7px;
+}
+
+nav button {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 11px 12px;
+  border-radius: 10px;
+  color: #d5e5dc;
+}
+
+nav button:hover:not(:disabled) {
+  background: #ffffff12;
+  color: #fff;
+}
+
+nav button.active {
+  background: #f1bd5b;
+  color: #18382c;
+  font-weight: 750;
+  box-shadow: 0 8px 20px #00000024;
+}
+
+.account {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid #ffffff24;
+  padding: 17px 5px 0;
+}
+
+.account > span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f1bd5b;
+  color: #17372c;
+  font-size: 10px;
+}
+
+.account small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #d8e6df;
+}
+
+.account button {
+  border: 0;
+  background: transparent;
+  color: #d8e6df;
+  font-size: 10px;
+}
+
+.workspace {
+  padding: 34px 38px 60px;
+  min-width: 0;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+header h1 {
+  font-size: 32px;
+  margin: 5px 0;
+}
+
+header > div > p:last-child {
+  color: #767e79;
+  margin: 0;
+  font-size: 13px;
+}
+
+.refresh {
+  border: 1px solid #daddd7;
+  background: #fff;
+  padding: 9px 13px;
+  border-radius: 10px;
+  color: #59615c;
+}
+
+.empty {
+  grid-column: 1 / -1;
+  padding: 40px;
+  text-align: center;
+  color: #858c88;
+  background: #ffffff88;
+  border: 1px dashed #d3d7d0;
+  border-radius: 14px;
+}
+
+.toast {
+  position: fixed;
+  right: 25px;
+  bottom: 25px;
+  background: #214b39;
+  color: #fff;
+  padding: 13px 17px;
+  border-radius: 11px;
+  box-shadow: 0 14px 35px #18332755;
+  font-size: 11px;
+}
+
+.toast[data-kind="error"] {
+  background: #7a322b;
+}
+
+button:disabled,
+.publication-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  transform: none;
+}
+
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  border: 2px solid #ffffff70;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  vertical-align: -2px;
+  animation: button-spin 0.7s linear infinite;
+}
+
+.spinner-dark {
+  border-color: #5261593d;
+  border-top-color: currentColor;
+}
+
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 760px) {
+  .shell {
+    display: block;
+  }
+
+  .shell > aside {
+    position: static;
+    height: auto;
+    padding: 14px;
+  }
+
+  .shell nav {
+    display: flex;
+    overflow-x: auto;
+    margin-top: 14px;
+  }
+
+  .shell nav button {
+    white-space: nowrap;
+  }
+
+  .brand {
+    padding: 0;
+  }
+
+  .workspace {
+    padding: 22px 14px;
+  }
+
+  header h1 {
+    font-size: 26px;
+  }
+}

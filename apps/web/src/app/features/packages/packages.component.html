@@ -1,0 +1,129 @@
+<header>
+  <div>
+    <p class="eyebrow">PAQUETES GENERADOS</p>
+    <h1>Lotes de imágenes.</h1>
+    <p>Consulta los paquetes ya generados y abre cada pieza para revisarla.</p>
+  </div>
+  <button
+    class="refresh"
+    [disabled]="store.busy()"
+    [attr.aria-busy]="store.isLoading('load')"
+    (click)="store.load()"
+  >
+    @if (store.isLoading("load")) {
+      <span class="spinner spinner-dark" aria-hidden="true"></span>
+      Actualizando…
+    } @else {
+      ↻ Actualizar
+    }
+  </button>
+</header>
+
+<section class="packages module-section">
+  <div class="section-title">
+    <div>
+      <p class="eyebrow">HISTORIAL DE LOTES</p>
+      <h2>Paquetes disponibles</h2>
+    </div>
+    <small>{{ store.batches().length }} paquetes</small>
+  </div>
+  <div class="package-board">
+    <div class="package-list">
+      @for (batch of store.batches(); track batch.id) {
+        <button
+          class="package-card"
+          [attr.data-status]="batch.status"
+          [disabled]="store.busy()"
+          [class.selected]="store.selectedBatch()?.id === batch.id"
+          (click)="store.selectBatch(batch)"
+        >
+          <div>
+            <strong>{{ batch.name }}</strong>
+            <small>{{ batch.createdAt | date: "dd MMM, h:mm a" }}</small>
+          </div>
+          <span class="badge" [attr.data-status]="batch.status">
+            {{ store.batchStatusLabel(batch.status) }}
+          </span>
+          <div class="package-progress">
+            <span
+              [style.width.%]="
+                batch.requestedCount
+                  ? (batch.generatedCount / batch.requestedCount) * 100
+                  : 0
+              "
+            ></span>
+          </div>
+          <small>
+            {{ batch.generatedCount }} de {{ batch.requestedCount }} imágenes
+            generadas
+          </small>
+        </button>
+      } @empty {
+        <div class="empty">
+          Todavía no has generado paquetes. Créalo desde Publicaciones.
+        </div>
+      }
+    </div>
+
+    <article class="package-detail">
+      @if (store.selectedBatch(); as batch) {
+        <div class="review-top">
+          <div>
+            <p class="eyebrow">DETALLE DEL PAQUETE</p>
+            <h2>{{ batch.name }}</h2>
+          </div>
+          <span class="badge" [attr.data-status]="batch.status">
+            {{ store.batchStatusLabel(batch.status) }}
+          </span>
+        </div>
+        <p class="package-description">
+          {{ batch.theme }} · {{ batch.tone }} ·
+          {{ batch.publications.length }} publicaciones
+          @if (batch.obsoleteCount) {
+            · {{ batch.obsoleteCount }} versiones obsoletas archivadas
+          }
+        </p>
+        <div class="package-images">
+          @for (item of batch.publications; track item.id) {
+            <button
+              [disabled]="store.busy()"
+              (click)="store.openPublication(item)"
+            >
+              <div
+                class="package-image"
+                [style.background-image]="store.imageStyle(item)"
+              >
+                @if (!item.composedImageUrl) {
+                  <blockquote>“{{ item.quote }}”</blockquote>
+                }
+              </div>
+              <span>{{ store.statusLabel(item.status) }}</span>
+            </button>
+          }
+        </div>
+        @if (batch.status === "pending_review") {
+          <button
+            class="approve approve-batch"
+            [disabled]="store.busy()"
+            [attr.aria-busy]="store.isLoading('approveBatch')"
+            (click)="store.approveSelectedBatch()"
+          >
+            @if (store.isLoading("approveBatch")) {
+              <span class="spinner" aria-hidden="true"></span> Aprobando…
+            } @else {
+              ✓ Aprobar paquete completo
+            }
+          </button>
+        }
+        <p class="safety">
+          Abre cualquier imagen para aprobarla, rechazarla o regenerarla desde
+          Publicaciones.
+        </p>
+      } @else {
+        <div class="empty review-empty">
+          Selecciona un paquete para ver sus imágenes.
+        </div>
+      }
+    </article>
+  </div>
+</section>
