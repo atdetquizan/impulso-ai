@@ -4,9 +4,19 @@
     "frontend": {
       "root": "apps/web",
       "framework": "angular"
+    },
+    "api": {
+      "root": ".",
+      "entrypoint": "Dockerfile.api"
     }
   },
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": {
+        "service": "api"
+      }
+    },
     {
       "source": "/(.*)",
       "destination": {
