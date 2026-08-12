@@ -11,4 +11,5 @@ RUN npm run build -w @impulso/contracts && npm run build -w @impulso/web
 FROM nginx:1.29-alpine
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/apps/web/dist/web/browser /usr/share/nginx/html
+COPY --from=build /app/apps/web/tiktokq2TvQJepu37u0EUgT5nzaaHowgxPapeK.txt /usr/share/nginx/html/tiktokq2TvQJepu37u0EUgT5nzaaHowgxPapeK.txt
 EXPOSE 80
