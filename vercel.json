@@ -1,10 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "services": {
-    "frontend": {
-      "root": "apps/web",
-      "framework": "angular"
-    },
     "api": {
       "root": ".",
       "entrypoint": "Dockerfile.api"
@@ -15,12 +11,6 @@
       "source": "/api/(.*)",
       "destination": {
         "service": "api"
-      }
-    },
-    {
-      "source": "/(.*)",
-      "destination": {
-        "service": "frontend"
       }
     }
   ]
