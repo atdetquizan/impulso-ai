@@ -7,10 +7,10 @@ services:
     env_file:
       - apps/api/.env
     environment:
-      PORT: 3000
-      FFMPEG_PATH: /usr/bin/ffmpeg
-      FFPROBE_PATH: /usr/bin/ffprobe
-      FFMPEG_FONT_PATH: /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+      PORT: ${PORT:-3000}
+      FFMPEG_PATH: ${FFMPEG_PATH:-/usr/bin/ffmpeg}
+      FFPROBE_PATH: ${FFPROBE_PATH:-/usr/bin/ffprobe}
+      FFMPEG_FONT_PATH: ${FFMPEG_FONT_PATH:-/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf}
     init: true
     ports:
       - "3000:3000"
