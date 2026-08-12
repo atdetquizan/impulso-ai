@@ -4,12 +4,12 @@
     "frontend": {
       "root": ".",
       "runtime": "container",
-      "entrypoint": "Dockerfile.frontend"
+      "entrypoint": "apps/web/Dockerfile.vercel"
     },
     "api": {
       "root": ".",
       "runtime": "container",
-      "entrypoint": "Dockerfile.api"
+      "entrypoint": "apps/api/Dockerfile.vercel"
     }
   },
   "rewrites": [
