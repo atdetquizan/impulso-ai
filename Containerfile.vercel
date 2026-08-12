@@ -22,8 +22,8 @@ COPY --from=build /app/apps/api/package.json ./apps/api/package.json
 COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist
 COPY --from=build /app/packages/contracts/package.json ./packages/contracts/package.json
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=80
 ENV FFMPEG_PATH=/usr/bin/ffmpeg
 ENV FFMPEG_FONT_PATH=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
-EXPOSE 3000
+EXPOSE 80
 CMD ["node", "apps/api/dist/main.js"]

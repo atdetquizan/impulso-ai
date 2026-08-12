@@ -3,7 +3,7 @@ services:
     image: impulso-api:local
     build:
       context: .
-      dockerfile: Dockerfile.api
+      dockerfile: Containerfile.vercel
     env_file:
       - apps/api/.env
     environment:
@@ -16,13 +16,13 @@ services:
       - "3000:3000"
     restart: unless-stopped
 
-  # web:
-  #   image: impulso-web:local
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.frontend
-  #   ports:
-  #     - "4200:80"
-  #   depends_on:
-  #     - api
-  #   restart: unless-stopped
+  web:
+    image: impulso-web:local
+    build:
+      context: .
+      dockerfile: Dockerfile.vercel
+    ports:
+      - "4200:80"
+    depends_on:
+      - api
+    restart: unless-stopped
