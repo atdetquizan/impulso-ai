@@ -58,7 +58,7 @@ npm run dev:web
 
 Angular consume únicamente rutas relativas `/api`; no contiene URL ni claves de Supabase. En desarrollo, `proxy.conf.json` dirige `/api` a NestJS. En Docker, NGINX hace el mismo proxy al servicio `api`.
 
-Configura en `.env` del backend `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` y `SUPABASE_SECRET_KEY`. Nunca coloques secretos de Supabase, Cloudflare, OpenAI ni TikTok en Angular.
+Configura en `.env` del backend `SUPABASE_URL` y `SUPABASE_SECRET_KEY`. Supabase se usa como Postgres y Storage; Angular nunca recibe claves ni tokens de Supabase.
 
 ## Sitio público y rutas legales
 
@@ -105,7 +105,7 @@ El backend solicita la imagen sin texto y FFmpeg la escala y recorta a `1080x192
 2. Aplica también `202608110003_versions_music_and_tiktok.sql`; la pista de ejemplo queda deshabilitada porque no contiene un archivo real.
 3. Abre **Música** en la aplicación y sube una pista original, licenciada o generada con IA. El backend valida formato y duración con FFprobe.
 4. Mantén `generated-images`, `rendered-videos` y `music` como buckets privados.
-5. Configura las URLs de redirección de Supabase Auth. El correo lo envía NestJS mediante SMTP.
+5. No es necesario configurar **Site URL** ni **Redirect URLs** en Supabase Auth: el flujo de acceso pertenece completamente a NestJS.
 
 Para aplicar las migraciones a un proyecto Supabase remoto vinculado:
 
@@ -114,11 +114,11 @@ npx supabase link --project-ref TU_PROJECT_REF
 npx supabase db push
 ```
 
-La migración `202608120001_auth_email_rate_limits.sql` es obligatoria para el nuevo envío SMTP. Crea un límite atómico por correo usando solamente su hash SHA-256, por lo que funciona también con varias instancias de la API.
+Las migraciones `202608120001_auth_email_rate_limits.sql` y `202608130001_app_managed_auth.sql` son obligatorias. La segunda crea usuarios, enlaces de un solo uso y sesiones administrados por la aplicación, y conserva los IDs de usuarios existentes.
 
-## Magic Link por SMTP
+## Magic Link y sesión administrados por la API
 
-Supabase continúa creando usuarios, generando el Magic Link y validando la sesión. NestJS envía ese enlace con una plantilla HTML propia, por lo que ya no se utiliza el proveedor de correo integrado de Supabase.
+NestJS crea un token aleatorio de un solo uso, almacena únicamente su hash SHA-256 en Postgres y envía una URL de la propia aplicación mediante SMTP (`/api/auth/verify`). Al abrirla, la API consume el token atómicamente, crea cookies propias `HttpOnly` y redirige a Publicaciones. Supabase Auth no genera enlaces, usuarios, JWT ni refresh tokens.
 
 Para Gmail activa la verificación en dos pasos y crea una **contraseña de aplicación**. No uses la contraseña normal de la cuenta. Configura estas variables solo en la API o en los secretos de Vercel:
 
@@ -131,7 +131,13 @@ SMTP_PASS=tu_contrasena_de_aplicacion
 EMAIL_FROM="Impulso IA <tu_cuenta@gmail.com>"
 FRONTEND_URL=https://tu-frontend.example.com
 AUTH_MAGIC_LINK_COOLDOWN_SECONDS=60
+AUTH_MAGIC_LINK_TTL_MINUTES=15
+AUTH_ACCESS_TOKEN_TTL_SECONDS=900
+AUTH_REFRESH_TOKEN_TTL_DAYS=30
+AUTH_TOKEN_SECRET=un_secreto_aleatorio_de_al_menos_32_caracteres
 ```
+
+Genera `AUTH_TOKEN_SECRET` una sola vez con `openssl rand -base64 48`, guárdalo como secreto de producción y no lo cambies mientras existan sesiones activas. El enlace llega directamente a `/api/auth/verify`, se consume una sola vez y la respuesta impide caché y envío del `Referer` antes de redirigir.
 
 En Vercel pega la contraseña de aplicación sin comillas. El backend no ejecuta una conexión de prueba SMTP durante el arranque; se conecta únicamente cuando alguien solicita el enlace, evitando demoras de inicialización. Si el envío falla, la reserva del límite se libera y el usuario puede reintentar.
 
@@ -173,7 +179,8 @@ Los fallos se clasifican por etapa: descarga de recursos, composición con FFmpe
 | Método | Ruta | Uso |
 |---|---|---|
 | `POST` | `/api/auth/magic-link` | Solicitar enlace de acceso mediante NestJS |
-| `POST` | `/api/auth/session` | Convertir el callback de Supabase en cookies HttpOnly |
+| `GET` | `/api/auth/verify` | Consumir el enlace propio, crear la sesión y redirigir |
+| `POST` | `/api/auth/session` | Consumir el Magic Link propio y crear cookies HttpOnly |
 | `POST` | `/api/auth/refresh` | Renovar la sesión HttpOnly |
 | `POST` | `/api/auth/logout` | Cerrar la sesión del navegador |
 | `GET` | `/api/auth/me` | Consultar el usuario autenticado |
@@ -192,7 +199,7 @@ Los fallos se clasifican por etapa: descarga de recursos, composición con FFmpe
 
 Cuando el límite persistente impide un reenvío, NestJS responde `429` con el código `AUTH_RATE_LIMIT` y el tiempo restante exacto en `retryAfterSeconds`. Angular conserva únicamente el vencimiento no sensible del contador en `localStorage` y lo restaura al recargar la página. La tabla de control no guarda el correo: usa su hash SHA-256.
 
-El callback de autenticación traduce los errores de Supabase —incluidos enlaces vencidos, inválidos o ya utilizados— a mensajes visibles dentro del formulario de acceso. Después de procesar el callback, limpia de la barra de direcciones tanto los tokens como los parámetros de error.
+El callback traduce enlaces vencidos, inválidos o ya utilizados a mensajes visibles dentro del formulario de acceso. Después de procesarlo, elimina inmediatamente el token de la barra de direcciones.
 
 ## Pendientes antes de producción
 
@@ -208,8 +215,8 @@ El callback de autenticación traduce los errores de Supabase —incluidos enlac
 
 - RLS activado en tablas expuestas y assets privados.
 - Angular no accede directamente a Supabase ni almacena tokens en `localStorage`.
-- Tokens de Supabase guardados en cookies `HttpOnly`, `SameSite=Lax` y `Secure` en producción.
-- JWT de Supabase verificado en la API y refresh gestionado por NestJS.
+- Access token propio de corta duración y refresh token rotatorio en cookies `HttpOnly`, `SameSite=Lax` y `Secure` en producción.
+- Magic Links de un solo uso; Postgres conserva únicamente hashes SHA-256 de Magic Links y refresh tokens.
 - Secret key de Supabase solo en backend.
 - Tokens de TikTok cifrados con AES-256-GCM.
 - Auditoría inmutable de transiciones.

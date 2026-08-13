@@ -38,8 +38,7 @@ export interface MagicLinkResponse {
 }
 
 export interface CreateSessionRequest {
-  accessToken: string;
-  refreshToken: string;
+  token: string;
 }
 
 export interface Publication {

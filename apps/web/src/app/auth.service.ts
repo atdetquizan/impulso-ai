@@ -69,7 +69,7 @@ export class AuthService {
 
   private async initialize() {
     try {
-      const callbackResult = await this.consumeSupabaseCallback();
+      const callbackResult = await this.consumeAppCallback();
       if (callbackResult !== 'none') return;
 
       const response = await firstValueFrom(this.http.get<AuthResponse>(`${environment.apiUrl}/auth/me`));
@@ -88,12 +88,11 @@ export class AuthService {
     }
   }
 
-  private async consumeSupabaseCallback(): Promise<CallbackResult> {
+  private async consumeAppCallback(): Promise<CallbackResult> {
     const hashParams = new URLSearchParams(window.location.hash.slice(1));
     const queryParams = new URLSearchParams(window.location.search);
     const value = (name: string) => hashParams.get(name) ?? queryParams.get(name);
-    const accessToken = value('access_token');
-    const refreshToken = value('refresh_token');
+    const token = value('token');
     const errorCode = value('error_code');
     const errorDescription = value('error_description');
     const isAuthCallback = window.location.pathname === '/auth/callback';
@@ -108,7 +107,7 @@ export class AuthService {
       return 'error';
     }
 
-    if (!accessToken || !refreshToken) {
+    if (!token) {
       if (!isAuthCallback) return 'none';
 
       this.clearAuthCallbackUrl();
@@ -121,7 +120,7 @@ export class AuthService {
     }
 
     try {
-      const body: CreateSessionRequest = { accessToken, refreshToken };
+      const body: CreateSessionRequest = { token };
       const response = await firstValueFrom(
         this.http.post<AuthResponse>(`${environment.apiUrl}/auth/session`, body),
       );

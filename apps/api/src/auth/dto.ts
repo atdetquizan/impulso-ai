@@ -1,10 +1,13 @@
-import { IsEmail, IsString } from 'class-validator';
+import { IsEmail, IsString, Length } from 'class-validator';
 
 export class MagicLinkDto {
   @IsEmail({}, { message: 'Ingresa un correo electrónico válido.' }) email!: string;
 }
 
 export class CreateSessionDto {
-  @IsString() accessToken!: string;
-  @IsString() refreshToken!: string;
+  @IsString()
+  @Length(40, 128)
+  token!: string;
 }
+
+export class VerifyMagicLinkDto extends CreateSessionDto {}

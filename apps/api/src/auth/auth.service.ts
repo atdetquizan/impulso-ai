@@ -1,12 +1,15 @@
-import { BadGatewayException, HttpException, HttpStatus, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { createHash, randomBytes } from 'node:crypto';
+import { HttpException, HttpStatus, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
-import type { Session } from '@supabase/supabase-js';
 import type { AuthUser, MagicLinkResponse } from '@impulso/contracts';
 import { SupabaseService } from '../supabase/supabase.service.js';
 import { AuthEmailService } from './auth-email.service.js';
 import { ACCESS_COOKIE, REFRESH_COOKIE } from './auth.guard.js';
 import { MagicLinkRateLimitService } from './magic-link-rate-limit.service.js';
+import { AuthTokenService } from './auth-token.service.js';
+
+interface AppUserRow { id: string; email: string }
 
 @Injectable()
 export class AuthService {
@@ -14,20 +17,22 @@ export class AuthService {
   private readonly frontendUrl: string;
   private readonly secureCookies: boolean;
   private readonly magicLinkCooldownSeconds: number;
+  private readonly magicLinkTtlMinutes: number;
+  private readonly refreshTokenTtlDays: number;
 
   constructor(
     private readonly supabase: SupabaseService,
     private readonly email: AuthEmailService,
     private readonly rateLimit: MagicLinkRateLimitService,
+    private readonly tokens: AuthTokenService,
     config: ConfigService,
   ) {
-    this.logger.log(`AuthService initialized with frontend URL: ${config.get<string>('FRONTEND_URL') ?? 'http://localhost:4200'}`);
-    this.frontendUrl = config.get<string>('FRONTEND_URL') ?? 'http://localhost:4200';
+    this.frontendUrl = (config.get<string>('FRONTEND_URL') ?? 'http://localhost:4200').replace(/\/$/, '');
     this.secureCookies = config.get<string>('NODE_ENV') === 'production';
-    this.magicLinkCooldownSeconds = this.positiveInteger(
-      config.get<string | number>('AUTH_MAGIC_LINK_COOLDOWN_SECONDS'),
-      60,
-    );
+    this.magicLinkCooldownSeconds = this.positiveInteger(config.get('AUTH_MAGIC_LINK_COOLDOWN_SECONDS'), 60);
+    this.magicLinkTtlMinutes = this.positiveInteger(config.get('AUTH_MAGIC_LINK_TTL_MINUTES'), 15);
+    this.refreshTokenTtlDays = this.positiveInteger(config.get('AUTH_REFRESH_TOKEN_TTL_DAYS'), 30);
+    this.logger.log(`Autenticación propia activa: ${this.frontendUrl}/api/auth/verify`);
   }
 
   async sendMagicLink(email: string): Promise<MagicLinkResponse> {
@@ -43,56 +48,91 @@ export class AuthService {
     }
 
     try {
-      const { data, error } = await this.supabase.admin.auth.admin.generateLink({
-        type: 'magiclink',
-        email: normalizedEmail,
-        options: { redirectTo: `${this.frontendUrl}/auth/callback` },
+      const rawToken = randomBytes(32).toString('base64url');
+      const expiresAt = new Date(Date.now() + this.magicLinkTtlMinutes * 60_000).toISOString();
+      const { error } = await this.supabase.admin.rpc('issue_app_magic_link', {
+        p_email: normalizedEmail,
+        p_token_hash: this.hash(rawToken),
+        p_expires_at: expiresAt,
       });
-      const actionLink = data?.properties?.action_link;
+      if (error) throw new Error(`No se pudo registrar el enlace: ${error.message}`);
 
-      if (error || !actionLink) {
-        this.logger.error(`Supabase no pudo generar el Magic Link: ${error?.message ?? 'respuesta sin action_link'}`);
-        throw new BadGatewayException({
-          code: 'AUTH_MAGIC_LINK_FAILED',
-          message: 'No pudimos generar el enlace de acceso. Inténtalo nuevamente en unos instantes.',
-        });
-      }
-
+      // La URL pertenece a la aplicación y Vercel enruta /api hacia NestJS.
+      const actionLink = `${this.frontendUrl}/api/auth/verify?token=${encodeURIComponent(rawToken)}`;
       await this.email.sendMagicLink(normalizedEmail, actionLink);
-      return {
-        sent: true,
-        retryAfterSeconds: this.magicLinkCooldownSeconds,
-      };
+      return { sent: true, retryAfterSeconds: this.magicLinkCooldownSeconds };
     } catch (error) {
+      this.logger.error(`No se pudo crear el enlace de acceso propio: ${this.errorMessage(error)}`);
       await this.rateLimit.release(reservation.claim);
       throw error;
     }
   }
 
-  async createSession(accessToken: string, refreshToken: string, response: Response) {
-    const { data, error } = await this.supabase.admin.auth.getUser(accessToken);
-    if (error || !data.user) throw new UnauthorizedException('Invalid Supabase session');
-
-    const { data: refreshed, error: refreshError } = await this.supabase.auth.auth.refreshSession({
-      refresh_token: refreshToken,
+  async createSession(magicToken: string, response: Response) {
+    const refreshToken = randomBytes(32).toString('base64url');
+    const { data, error } = await this.supabase.admin.rpc('consume_app_magic_link', {
+      p_token_hash: this.hash(magicToken),
+      p_refresh_token_hash: this.hash(refreshToken),
+      p_refresh_expires_at: new Date(Date.now() + this.refreshTokenTtlDays * 86_400_000).toISOString(),
     });
-    if (refreshError || !refreshed.session) throw new UnauthorizedException('Invalid refresh token');
+    const user = (data as AppUserRow[] | null)?.[0];
+    if (error || !user) {
+      throw new UnauthorizedException({
+        code: 'AUTH_LINK_INVALID',
+        message: 'El enlace venció, ya fue utilizado o no es válido.',
+      });
+    }
 
-    this.writeCookies(response, refreshed.session);
-    return { user: this.mapUser(refreshed.session.user) };
+    this.writeCookies(response, user, refreshToken);
+    return { user: this.mapUser(user) };
+  }
+
+  async verifyMagicLinkAndRedirect(magicToken: string, response: Response) {
+    response.setHeader('Cache-Control', 'no-store');
+    response.setHeader('Referrer-Policy', 'no-referrer');
+    try {
+      await this.createSession(magicToken, response);
+      return response.redirect(HttpStatus.SEE_OTHER, `${this.frontendUrl}/publications`);
+    } catch (error) {
+      this.logger.warn(`Enlace de acceso rechazado: ${this.errorMessage(error)}`);
+      this.clearCookies(response);
+      return response.redirect(
+        HttpStatus.SEE_OTHER,
+        `${this.frontendUrl}/publications?error_code=invalid_or_expired`,
+      );
+    }
   }
 
   async refresh(refreshToken: string | undefined, response: Response) {
-    if (!refreshToken) throw new UnauthorizedException('Missing refresh session');
-    const { data, error } = await this.supabase.auth.auth.refreshSession({ refresh_token: refreshToken });
-    if (error || !data.session) throw new UnauthorizedException('Session expired');
-    this.writeCookies(response, data.session);
-    return { user: this.mapUser(data.session.user) };
+    if (!refreshToken) throw new UnauthorizedException('Missing session');
+
+    const nextToken = randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + this.refreshTokenTtlDays * 86_400_000).toISOString();
+    const { data, error } = await this.supabase.admin.rpc('rotate_app_refresh_token', {
+      p_current_token_hash: this.hash(refreshToken),
+      p_next_token_hash: this.hash(nextToken),
+      p_next_expires_at: expiresAt,
+    });
+    const user = (data as AppUserRow[] | null)?.[0];
+    if (error || !user) {
+      this.clearCookies(response);
+      throw new UnauthorizedException('Session expired');
+    }
+
+    this.writeCookies(response, user, nextToken);
+    return { user: this.mapUser(user) };
   }
 
-  clearSession(response: Response) {
-    response.clearCookie(ACCESS_COOKIE, this.cookieOptions());
-    response.clearCookie(REFRESH_COOKIE, this.cookieOptions());
+  async clearSession(response: Response, refreshToken?: string) {
+    if (refreshToken) {
+      const { error } = await this.supabase.admin
+        .from('app_refresh_sessions')
+        .update({ revoked_at: new Date().toISOString() })
+        .eq('token_hash', this.hash(refreshToken))
+        .is('revoked_at', null);
+      if (error) this.logger.warn(`No se pudo revocar la sesión: ${error.message}`);
+    }
+    this.clearCookies(response);
     return { signedOut: true };
   }
 
@@ -108,27 +148,40 @@ export class AuthService {
     return undefined;
   }
 
-  private writeCookies(response: Response, session: Session) {
-    response.cookie(ACCESS_COOKIE, session.access_token, {
+  private writeCookies(response: Response, user: AppUserRow, refreshToken: string) {
+    response.cookie(ACCESS_COOKIE, this.tokens.signAccessToken(user), {
       ...this.cookieOptions(),
-      maxAge: Math.max(60, session.expires_in) * 1000,
+      maxAge: this.tokens.accessTokenTtlSeconds * 1000,
     });
-    response.cookie(REFRESH_COOKIE, session.refresh_token, {
+    response.cookie(REFRESH_COOKIE, refreshToken, {
       ...this.cookieOptions(),
-      maxAge: 30 * 24 * 60 * 60 * 1000,
+      maxAge: this.refreshTokenTtlDays * 86_400_000,
     });
+  }
+
+  private clearCookies(response: Response) {
+    response.clearCookie(ACCESS_COOKIE, this.cookieOptions());
+    response.clearCookie(REFRESH_COOKIE, this.cookieOptions());
   }
 
   private cookieOptions() {
     return { httpOnly: true, secure: this.secureCookies, sameSite: 'lax' as const, path: '/' };
   }
 
-  private mapUser(user: { id: string; email?: string }): AuthUser {
-    return { id: user.id, email: user.email ?? null };
+  private hash(value: string) {
+    return createHash('sha256').update(value).digest('hex');
+  }
+
+  private mapUser(user: AppUserRow): AuthUser {
+    return { id: user.id, email: user.email };
   }
 
   private positiveInteger(value: string | number | undefined, fallback: number) {
     const parsed = Number(value);
     return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+  }
+
+  private errorMessage(error: unknown) {
+    return error instanceof Error ? error.message : String(error);
   }
 }

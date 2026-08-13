@@ -9,7 +9,13 @@ export const authCookieInterceptor: HttpInterceptorFn = (request, next) => {
   const requestWithCookies = request.clone({ withCredentials: true });
   return next(requestWithCookies).pipe(
     catchError((error: HttpErrorResponse) => {
-      if (error.status !== 401 || request.url.includes('/auth/')) return throwError(() => error);
+      const cannotRefresh = [
+        '/auth/magic-link',
+        '/auth/session',
+        '/auth/refresh',
+        '/auth/logout',
+      ].some((path) => request.url.includes(path));
+      if (error.status !== 401 || cannotRefresh) return throwError(() => error);
 
       const rawHttp = new HttpClient(inject(HttpBackend));
       refreshRequest ??= rawHttp.post(`${environment.apiUrl}/auth/refresh`, {}, { withCredentials: true }).pipe(

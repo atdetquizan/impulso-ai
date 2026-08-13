@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Headers, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Post, Query, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import type { AuthenticatedRequest } from './auth.guard.js';
 import { Public } from './public.decorator.js';
 import { AuthService } from './auth.service.js';
-import { CreateSessionDto, MagicLinkDto } from './dto.js';
+import { CreateSessionDto, MagicLinkDto, VerifyMagicLinkDto } from './dto.js';
 
 @Controller('auth')
 export class AuthController {
@@ -16,9 +16,15 @@ export class AuthController {
   }
 
   @Public()
+  @Get('verify')
+  verifyMagicLink(@Query() dto: VerifyMagicLinkDto, @Res() response: Response) {
+    return this.auth.verifyMagicLinkAndRedirect(dto.token, response);
+  }
+
+  @Public()
   @Post('session')
   session(@Body() dto: CreateSessionDto, @Res({ passthrough: true }) response: Response) {
-    return this.auth.createSession(dto.accessToken, dto.refreshToken, response);
+    return this.auth.createSession(dto.token, response);
   }
 
   @Public()
@@ -29,8 +35,8 @@ export class AuthController {
 
   @Public()
   @Post('logout')
-  logout(@Res({ passthrough: true }) response: Response) {
-    return this.auth.clearSession(response);
+  logout(@Headers('cookie') cookieHeader: string | undefined, @Res({ passthrough: true }) response: Response) {
+    return this.auth.clearSession(response, this.auth.readRefreshCookie(cookieHeader));
   }
 
   @Get('me')
