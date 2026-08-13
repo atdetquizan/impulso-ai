@@ -15,22 +15,34 @@
         Genera frases e imágenes, aprueba cada pieza y prográmala para TikTok
         desde un solo lugar.
       </p>
+      @if (auth.loginNotice(); as notice) {
+        <div
+          class="login-notice"
+          [attr.data-kind]="notice.kind"
+          [attr.role]="notice.kind === 'error' ? 'alert' : 'status'"
+          aria-live="polite"
+        >
+          {{ notice.message }}
+        </div>
+      }
       <label for="email">Correo electrónico</label>
       <input
         id="email"
         type="email"
         [(ngModel)]="email"
         placeholder="tu@correo.com"
-        (keyup.enter)="emailValid() && login()"
+        (keyup.enter)="emailValid() && !auth.magicLinkRetryAfterSeconds() && login()"
       />
       <button
         class="primary"
-        [disabled]="workspace.busy() || !emailValid()"
+        [disabled]="workspace.busy() || !emailValid() || auth.magicLinkRetryAfterSeconds() > 0"
         [attr.aria-busy]="workspace.isLoading('login')"
         (click)="login()"
       >
         @if (workspace.isLoading("login")) {
           <span class="spinner" aria-hidden="true"></span> Enviando enlace…
+        } @else if (auth.magicLinkRetryAfterSeconds() > 0) {
+          Solicitar otro enlace en {{ auth.magicLinkRetryAfterSeconds() }} s
         } @else {
           Recibir enlace de acceso
         }

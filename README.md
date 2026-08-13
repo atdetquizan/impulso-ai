@@ -86,7 +86,7 @@ El backend solicita la imagen sin texto y FFmpeg la escala y recorta a `1080x192
 2. Aplica también `202608110003_versions_music_and_tiktok.sql`; la pista de ejemplo queda deshabilitada porque no contiene un archivo real.
 3. Abre **Música** en la aplicación y sube una pista original, licenciada o generada con IA. El backend valida formato y duración con FFprobe.
 4. Mantén `generated-images`, `rendered-videos` y `music` como buckets privados.
-5. Para producción, configura SMTP y las URLs de redirección de Supabase Auth.
+5. Configura las URLs de redirección de Supabase Auth. El correo lo envía NestJS mediante SMTP.
 
 Para aplicar las migraciones a un proyecto Supabase remoto vinculado:
 
@@ -94,6 +94,27 @@ Para aplicar las migraciones a un proyecto Supabase remoto vinculado:
 npx supabase link --project-ref TU_PROJECT_REF
 npx supabase db push
 ```
+
+La migración `202608120001_auth_email_rate_limits.sql` es obligatoria para el nuevo envío SMTP. Crea un límite atómico por correo usando solamente su hash SHA-256, por lo que funciona también con varias instancias de la API.
+
+## Magic Link por SMTP
+
+Supabase continúa creando usuarios, generando el Magic Link y validando la sesión. NestJS envía ese enlace con una plantilla HTML propia, por lo que ya no se utiliza el proveedor de correo integrado de Supabase.
+
+Para Gmail activa la verificación en dos pasos y crea una **contraseña de aplicación**. No uses la contraseña normal de la cuenta. Configura estas variables solo en la API o en los secretos de Vercel:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=tu_cuenta@gmail.com
+SMTP_PASS=tu_contrasena_de_aplicacion
+EMAIL_FROM="Impulso IA <tu_cuenta@gmail.com>"
+FRONTEND_URL=https://tu-frontend.example.com
+AUTH_MAGIC_LINK_COOLDOWN_SECONDS=60
+```
+
+En Vercel pega la contraseña de aplicación sin comillas. El backend no ejecuta una conexión de prueba SMTP durante el arranque; se conecta únicamente cuando alguien solicita el enlace, evitando demoras de inicialización. Si el envío falla, la reserva del límite se libera y el usuario puede reintentar.
 
 ## Proveedores de IA
 
@@ -150,7 +171,9 @@ Los fallos se clasifican por etapa: descarga de recursos, composición con FFmpe
 | `GET` | `/api/music` | Listar música verificada con preview temporal |
 | `POST` | `/api/music` | Subir y validar una pista (multipart) |
 
-Cuando Supabase limita el reenvío del enlace, NestJS responde `429` con el código `AUTH_RATE_LIMIT`, un mensaje público en español y `retryAfterSeconds`. Los detalles internos del proveedor se conservan únicamente en los logs del backend. Angular muestra el mensaje mediante una notificación accesible y bloquea los botones mientras cada petición está en curso.
+Cuando el límite persistente impide un reenvío, NestJS responde `429` con el código `AUTH_RATE_LIMIT` y el tiempo restante exacto en `retryAfterSeconds`. Angular conserva únicamente el vencimiento no sensible del contador en `localStorage` y lo restaura al recargar la página. La tabla de control no guarda el correo: usa su hash SHA-256.
+
+El callback de autenticación traduce los errores de Supabase —incluidos enlaces vencidos, inválidos o ya utilizados— a mensajes visibles dentro del formulario de acceso. Después de procesar el callback, limpia de la barra de direcciones tanto los tokens como los parámetros de error.
 
 ## Pendientes antes de producción
 

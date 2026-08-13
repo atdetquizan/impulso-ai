@@ -32,6 +32,11 @@ export interface MagicLinkRequest {
   email: string;
 }
 
+export interface MagicLinkResponse {
+  sent: true;
+  retryAfterSeconds: number;
+}
+
 export interface CreateSessionRequest {
   accessToken: string;
   refreshToken: string;

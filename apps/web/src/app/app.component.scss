@@ -66,6 +66,23 @@ header h1,
   line-height: 1.6;
 }
 
+.login-notice {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid #b8d8c8;
+  border-radius: 10px;
+  background: #eef8f2;
+  color: #205841;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.login-notice[data-kind="error"] {
+  border-color: #e0b6b1;
+  background: #fff3f1;
+  color: var(--danger);
+}
+
 label {
   display: grid;
   gap: 7px;

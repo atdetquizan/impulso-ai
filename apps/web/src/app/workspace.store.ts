@@ -105,6 +105,13 @@ export class WorkspaceStore {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       return this.flash("Ingresa un correo electrónico válido.", "error");
     }
+    const retryAfterSeconds = this.auth.magicLinkRetryAfterSeconds();
+    if (retryAfterSeconds > 0) {
+      return this.flash(
+        `Ya solicitaste un enlace. Podrás solicitar otro en ${retryAfterSeconds} segundos.`,
+        "error",
+      );
+    }
     await this.withLoading("login", async () => {
       try {
         await this.auth.sendMagicLink(normalizedEmail);
@@ -466,7 +473,20 @@ export class WorkspaceStore {
         typeof error.error.message === "string"
           ? error.error.message
           : null;
-      if (apiMessage && error.status < 500) return apiMessage;
+      const apiCode =
+        error.error &&
+        typeof error.error === "object" &&
+        typeof error.error.code === "string"
+          ? error.error.code
+          : null;
+      const safeAuthCodes = new Set([
+        "AUTH_EMAIL_DELIVERY_FAILED",
+        "AUTH_MAGIC_LINK_FAILED",
+        "AUTH_RATE_LIMIT_UNAVAILABLE",
+      ]);
+      if (apiMessage && (error.status < 500 || (apiCode && safeAuthCodes.has(apiCode)))) {
+        return apiMessage;
+      }
       if (error.status === 0) {
         return "No pudimos conectar con el servidor. Verifica tu conexión e inténtalo nuevamente.";
       }

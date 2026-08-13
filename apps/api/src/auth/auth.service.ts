@@ -1,51 +1,72 @@
-import { BadRequestException, HttpException, HttpStatus, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadGatewayException, HttpException, HttpStatus, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import type { Session } from '@supabase/supabase-js';
-import type { AuthUser } from '@impulso/contracts';
+import type { AuthUser, MagicLinkResponse } from '@impulso/contracts';
 import { SupabaseService } from '../supabase/supabase.service.js';
+import { AuthEmailService } from './auth-email.service.js';
 import { ACCESS_COOKIE, REFRESH_COOKIE } from './auth.guard.js';
+import { MagicLinkRateLimitService } from './magic-link-rate-limit.service.js';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly frontendUrl: string;
   private readonly secureCookies: boolean;
+  private readonly magicLinkCooldownSeconds: number;
 
   constructor(
     private readonly supabase: SupabaseService,
+    private readonly email: AuthEmailService,
+    private readonly rateLimit: MagicLinkRateLimitService,
     config: ConfigService,
   ) {
+    this.logger.log(`AuthService initialized with frontend URL: ${config.get<string>('FRONTEND_URL') ?? 'http://localhost:4200'}`);
     this.frontendUrl = config.get<string>('FRONTEND_URL') ?? 'http://localhost:4200';
     this.secureCookies = config.get<string>('NODE_ENV') === 'production';
+    this.magicLinkCooldownSeconds = this.positiveInteger(
+      config.get<string | number>('AUTH_MAGIC_LINK_COOLDOWN_SECONDS'),
+      60,
+    );
   }
 
-  async sendMagicLink(email: string) {
-    const { error } = await this.supabase.auth.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${this.frontendUrl}/auth/callback` },
-    });
-    if (error) {
-      const retryAfterSeconds = this.retryAfterSeconds(error.message);
-      if (error.status === HttpStatus.TOO_MANY_REQUESTS || error.code === 'over_email_send_rate_limit' || retryAfterSeconds !== null) {
-        const waitMessage = retryAfterSeconds === null
-          ? 'Espera unos segundos antes de solicitar un nuevo enlace de acceso.'
-          : `Por seguridad, espera ${retryAfterSeconds} segundos antes de solicitar un nuevo enlace de acceso.`;
-        throw new HttpException({
-          statusCode: HttpStatus.TOO_MANY_REQUESTS,
-          code: 'AUTH_RATE_LIMIT',
-          message: `Ya solicitaste un enlace recientemente. ${waitMessage}`,
-          retryAfterSeconds,
-        }, HttpStatus.TOO_MANY_REQUESTS);
+  async sendMagicLink(email: string): Promise<MagicLinkResponse> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const reservation = await this.rateLimit.claim(normalizedEmail, this.magicLinkCooldownSeconds);
+    if (!reservation.allowed) {
+      throw new HttpException({
+        statusCode: HttpStatus.TOO_MANY_REQUESTS,
+        code: 'AUTH_RATE_LIMIT',
+        message: `Ya solicitaste un enlace recientemente. Espera ${reservation.retryAfterSeconds} segundos antes de solicitar uno nuevo.`,
+        retryAfterSeconds: reservation.retryAfterSeconds,
+      }, HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    try {
+      const { data, error } = await this.supabase.admin.auth.admin.generateLink({
+        type: 'magiclink',
+        email: normalizedEmail,
+        options: { redirectTo: `${this.frontendUrl}/auth/callback` },
+      });
+      const actionLink = data?.properties?.action_link;
+
+      if (error || !actionLink) {
+        this.logger.error(`Supabase no pudo generar el Magic Link: ${error?.message ?? 'respuesta sin action_link'}`);
+        throw new BadGatewayException({
+          code: 'AUTH_MAGIC_LINK_FAILED',
+          message: 'No pudimos generar el enlace de acceso. Inténtalo nuevamente en unos instantes.',
+        });
       }
 
-      this.logger.warn(`Supabase rechazó el envío del magic link: ${error.message}`);
-      throw new BadRequestException({
-        code: 'AUTH_MAGIC_LINK_FAILED',
-        message: 'No pudimos enviar el enlace de acceso. Verifica el correo e inténtalo nuevamente.',
-      });
+      await this.email.sendMagicLink(normalizedEmail, actionLink);
+      return {
+        sent: true,
+        retryAfterSeconds: this.magicLinkCooldownSeconds,
+      };
+    } catch (error) {
+      await this.rateLimit.release(reservation.claim);
+      throw error;
     }
-    return { sent: true };
   }
 
   async createSession(accessToken: string, refreshToken: string, response: Response) {
@@ -106,8 +127,8 @@ export class AuthService {
     return { id: user.id, email: user.email ?? null };
   }
 
-  private retryAfterSeconds(message: string) {
-    const match = message.match(/after\s+(\d+)\s+seconds?/i);
-    return match?.[1] ? Number(match[1]) : null;
+  private positiveInteger(value: string | number | undefined, fallback: number) {
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
   }
 }
