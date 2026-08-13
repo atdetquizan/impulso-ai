@@ -1,0 +1,30 @@
+<div class="public-site">
+  <header class="public-header">
+    <a class="public-brand" routerLink="/" aria-label="Impulso IA, página principal">
+      <span aria-hidden="true">✦</span>
+      <strong>Impulso <b>IA</b></strong>
+    </a>
+    <nav aria-label="Navegación pública">
+      <a routerLink="/" fragment="producto">Producto</a>
+      <a routerLink="/" fragment="flujo">Cómo funciona</a>
+      <a routerLink="/" fragment="seguridad">Control y seguridad</a>
+      <a class="public-login" routerLink="/publications">Ingresar</a>
+    </nav>
+  </header>
+
+  <router-outlet />
+
+  <footer class="public-footer">
+    <a class="public-brand" routerLink="/" aria-label="Impulso IA, página principal">
+      <span aria-hidden="true">✦</span>
+      <strong>Impulso <b>IA</b></strong>
+    </a>
+    <p>Creación, revisión y programación de contenido con control humano.</p>
+    <nav aria-label="Información legal">
+      <a routerLink="/terms-of-service">Términos de servicio</a>
+      <a routerLink="/privacy-policy">Política de privacidad</a>
+      <a routerLink="/publications">Acceso a la plataforma</a>
+    </nav>
+    <small>© 2026 Impulso IA. Todos los derechos reservados.</small>
+  </footer>
+</div>

@@ -1,4 +1,6 @@
-@if (!auth.initialized()) {
+@if (publicRoute()) {
+  <router-outlet />
+} @else if (!auth.initialized()) {
   <main class="login-shell">
     <section class="login-card">
       <span class="logo">✦</span>
@@ -47,6 +49,11 @@
           Recibir enlace de acceso
         }
       </button>
+      <div class="login-links">
+        <a routerLink="/">Conocer Impulso IA</a>
+        <a routerLink="/terms-of-service">Términos</a>
+        <a routerLink="/privacy-policy">Privacidad</a>
+      </div>
     </section>
   </main>
 } @else {
@@ -90,7 +97,7 @@
   </main>
 }
 
-@if (workspace.message()) {
+@if (!publicRoute() && workspace.message()) {
   <div
     class="toast"
     [attr.data-kind]="workspace.messageKind()"

@@ -50,7 +50,7 @@ app-root {
 }
 
 .login-card h1,
-header h1,
+.workspace header h1,
 .section-title h2 {
   font-family: Georgia, serif;
   font-weight: 500;
@@ -167,6 +167,24 @@ nav button,
   margin-top: 14px;
 }
 
+.login-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 16px;
+  margin-top: 22px;
+  font-size: 12px;
+}
+
+.login-links a {
+  color: var(--forest-2);
+  text-decoration: none;
+}
+
+.login-links a:hover {
+  text-decoration: underline;
+}
+
 .shell {
   min-height: 100vh;
   display: grid;
@@ -213,7 +231,7 @@ nav button,
   color: #f0bf62;
 }
 
-nav {
+.shell > aside nav {
   display: grid;
   gap: 7px;
 }
@@ -280,19 +298,19 @@ nav button.active {
   min-width: 0;
 }
 
-header {
+.workspace header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 25px;
 }
 
-header h1 {
+.workspace header h1 {
   font-size: 32px;
   margin: 5px 0;
 }
 
-header > div > p:last-child {
+.workspace header > div > p:last-child {
   color: #767e79;
   margin: 0;
   font-size: 13px;
@@ -396,7 +414,7 @@ button:disabled,
     padding: 22px 14px;
   }
 
-  header h1 {
+  .workspace header h1 {
     font-size: 26px;
   }
 }

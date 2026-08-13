@@ -1,7 +1,8 @@
 import { CommonModule } from "@angular/common";
-import { Component, ViewEncapsulation, inject } from "@angular/core";
+import { Component, OnDestroy, ViewEncapsulation, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
+import { Subscription, filter } from "rxjs";
 import { AuthService } from "./auth.service";
 import { WorkspaceStore } from "./workspace.store";
 
@@ -19,15 +20,26 @@ import { WorkspaceStore } from "./workspace.store";
   styleUrl: "./app.component.scss",
   encapsulation: ViewEncapsulation.None,
 })
-export class AppComponent {
+export class AppComponent implements OnDestroy {
   readonly auth = inject(AuthService);
   readonly workspace = inject(WorkspaceStore);
+  readonly publicRoute = signal(this.isPublicPath(window.location.pathname));
+  private readonly router = inject(Router);
+  private readonly routerSubscription: Subscription;
   email = "";
 
   constructor() {
+    this.routerSubscription = this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe((event) => this.publicRoute.set(this.isPublicPath(event.urlAfterRedirects)));
+
     void this.auth.ready.then(() => {
       if (this.auth.user()) void this.workspace.initializeWorkspace();
     });
+  }
+
+  ngOnDestroy() {
+    this.routerSubscription.unsubscribe();
   }
 
   emailValid() {
@@ -40,5 +52,10 @@ export class AppComponent {
 
   logout() {
     return this.workspace.logout();
+  }
+
+  private isPublicPath(url: string) {
+    const path = url.split(/[?#]/, 1)[0].replace(/\/$/, "") || "/";
+    return path === "/" || path === "/terms-of-service" || path === "/privacy-policy";
   }
 }

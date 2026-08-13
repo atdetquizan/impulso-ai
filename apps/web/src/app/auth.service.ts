@@ -1,5 +1,6 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import type {
   AuthUser,
@@ -31,7 +32,7 @@ export class AuthService {
   private magicLinkCooldownUntil = 0;
   private magicLinkCooldownTimer?: ReturnType<typeof setInterval>;
 
-  constructor(private readonly http: HttpClient) {
+  constructor(private readonly http: HttpClient, private readonly router: Router) {
     this.restoreMagicLinkCooldown();
     this.ready = this.initialize();
   }
@@ -153,7 +154,8 @@ export class AuthService {
   }
 
   private clearAuthCallbackUrl() {
-    window.history.replaceState({}, document.title, '/');
+    window.history.replaceState({}, document.title, '/publications');
+    void this.router.navigateByUrl('/publications', { replaceUrl: true });
   }
 
   private restoreMagicLinkCooldown() {

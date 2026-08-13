@@ -60,6 +60,25 @@ Angular consume únicamente rutas relativas `/api`; no contiene URL ni claves de
 
 Configura en `.env` del backend `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` y `SUPABASE_SECRET_KEY`. Nunca coloques secretos de Supabase, Cloudflare, OpenAI ni TikTok en Angular.
 
+## Sitio público y rutas legales
+
+El frontend expone páginas públicas que no requieren una sesión:
+
+- `/`: sitio oficial de presentación de Impulso IA.
+- `/terms-of-service`: términos de servicio.
+- `/privacy-policy`: política de privacidad y tratamiento de datos.
+- `/publications`: acceso al centro privado de publicaciones.
+
+Antes de desplegar, reemplaza `CONFIGURA_TU_CORREO_LEGAL` en `apps/web/src/app/features/public/legal.config.ts` por un correo real y supervisado. Los textos legales son una base funcional alineada al comportamiento técnico actual, pero deben ser revisados por el responsable legal antes de someter la integración a auditoría.
+
+Para TikTok Developer configura:
+
+```text
+Website URL:       https://impulso-ai.vercel.app/
+Terms of Service:  https://impulso-ai.vercel.app/terms-of-service
+Privacy Policy:    https://impulso-ai.vercel.app/privacy-policy
+```
+
 ## Cloudflare Workers AI
 
 1. En Cloudflare abre **AI > Workers AI** y copia el **Account ID**.
