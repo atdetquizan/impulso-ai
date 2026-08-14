@@ -33,6 +33,12 @@ export class ScheduleDto {
   @IsUUID() musicTrackId!: string;
 }
 
+export class ScheduleBatchDto {
+  @IsDateString() startAt!: string;
+  @Type(() => Number) @IsInt() @Min(30) @Max(10080) intervalMinutes!: number;
+  @IsUUID() musicTrackId!: string;
+}
+
 export class ListQueryDto {
   @IsOptional()
   @IsIn([

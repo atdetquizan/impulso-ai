@@ -9,6 +9,11 @@ import type {
   MagicLinkResponse,
 } from '@impulso/contracts';
 import { environment } from '../environments/environment';
+import {
+  clearAuthSessionHint,
+  hasAuthSessionHint,
+  saveAuthSessionHint,
+} from './auth-session-hint';
 
 interface AuthResponse { user: AuthUser }
 type LoginNoticeKind = 'error' | 'info';
@@ -63,8 +68,14 @@ export class AuthService {
   }
 
   async signOut() {
-    await firstValueFrom(this.http.post(`${environment.apiUrl}/auth/logout`, {}));
-    this.user.set(null);
+    try {
+      if (hasAuthSessionHint()) {
+        await firstValueFrom(this.http.post(`${environment.apiUrl}/auth/logout`, {}));
+      }
+    } finally {
+      clearAuthSessionHint();
+      this.user.set(null);
+    }
   }
 
   private async initialize() {
@@ -72,8 +83,14 @@ export class AuthService {
       const callbackResult = await this.consumeAppCallback();
       if (callbackResult !== 'none') return;
 
+      if (!hasAuthSessionHint()) {
+        this.user.set(null);
+        return;
+      }
+
       const response = await firstValueFrom(this.http.get<AuthResponse>(`${environment.apiUrl}/auth/me`));
       this.user.set(response.user);
+      saveAuthSessionHint();
     } catch (error) {
       if (!(error instanceof HttpErrorResponse && error.status === 401)) {
         console.error('Error al recuperar la sesión de usuario:', error);
@@ -82,6 +99,7 @@ export class AuthService {
           message: 'No pudimos recuperar tu sesión. Intenta solicitar un nuevo enlace de acceso.',
         });
       }
+      clearAuthSessionHint();
       this.user.set(null);
     } finally {
       this.initialized.set(true);
@@ -93,12 +111,14 @@ export class AuthService {
     const queryParams = new URLSearchParams(window.location.search);
     const value = (name: string) => hashParams.get(name) ?? queryParams.get(name);
     const token = value('token');
+    const sessionCreated = value('session') === 'created';
     const errorCode = value('error_code');
     const errorDescription = value('error_description');
     const isAuthCallback = window.location.pathname === '/auth/callback';
 
     if (errorCode || errorDescription) {
       this.clearAuthCallbackUrl();
+      clearAuthSessionHint();
       this.user.set(null);
       this.loginNotice.set({
         kind: 'error',
@@ -107,10 +127,35 @@ export class AuthService {
       return 'error';
     }
 
+    if (sessionCreated) {
+      saveAuthSessionHint();
+      try {
+        const response = await firstValueFrom(
+          this.http.get<AuthResponse>(`${environment.apiUrl}/auth/me`),
+        );
+        this.user.set(response.user);
+        this.loginNotice.set(null);
+        this.clearAuthCallbackUrl();
+        return 'success';
+      } catch (error) {
+        console.error('Error al validar la sesión creada por el enlace:', error);
+        this.clearAuthCallbackUrl();
+        clearAuthSessionHint();
+        this.user.set(null);
+        this.loginNotice.set({
+          kind: 'error',
+          message:
+            'La sesión no pudo guardarse en este navegador. Solicita un nuevo enlace y verifica que las cookies estén habilitadas.',
+        });
+        return 'error';
+      }
+    }
+
     if (!token) {
       if (!isAuthCallback) return 'none';
 
       this.clearAuthCallbackUrl();
+      clearAuthSessionHint();
       this.user.set(null);
       this.loginNotice.set({
         kind: 'error',
@@ -125,12 +170,14 @@ export class AuthService {
         this.http.post<AuthResponse>(`${environment.apiUrl}/auth/session`, body),
       );
       this.user.set(response.user);
+      saveAuthSessionHint();
       this.loginNotice.set(null);
       this.clearAuthCallbackUrl();
       return 'success';
     } catch (error) {
       console.error('Error al crear la sesión de usuario:', error);
       this.clearAuthCallbackUrl();
+      clearAuthSessionHint();
       this.user.set(null);
       this.loginNotice.set({
         kind: 'error',

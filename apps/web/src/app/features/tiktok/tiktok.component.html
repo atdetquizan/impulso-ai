@@ -15,8 +15,46 @@
       <p>Agrega TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET y TIKTOK_REDIRECT_URI. El secret nunca se envía al navegador.</p>
     } @else if (store.tiktok().connected) {
       <span class="verified">✓ Conectada</span>
-      <h3>{{ store.tiktok().displayName || "Cuenta TikTok autorizada" }}</h3>
+      <div class="profile-summary">
+        @if (store.tiktok().avatarUrl) {
+          <img [src]="store.tiktok().avatarUrl" alt="Foto de perfil de TikTok" />
+        } @else {
+          <div class="avatar-fallback">♪</div>
+        }
+        <div>
+          <small>CUENTA AUTORIZADA</small>
+          <h3>{{ store.tiktok().displayName || "Cuenta TikTok autorizada" }}</h3>
+        </div>
+      </div>
       <p>La aplicación puede publicar piezas aprobadas. Los tokens se guardan cifrados y se renuevan automáticamente.</p>
+      <dl class="connection-data">
+        <div>
+          <dt>Nombre usado como marca</dt>
+          <dd>{{ store.tiktok().displayName || "Sin nombre disponible" }}</dd>
+        </div>
+        <div>
+          <dt>ID de cuenta TikTok</dt>
+          <dd class="account-id" [title]="store.tiktok().openId || ''">{{ store.tiktok().openId || "No disponible" }}</dd>
+        </div>
+        <div>
+          <dt>Conectada desde</dt>
+          <dd>{{ store.tiktok().connectedAt | date: "dd MMM yyyy, h:mm a" }}</dd>
+        </div>
+        <div>
+          <dt>Acceso vigente hasta</dt>
+          <dd>{{ store.tiktok().expiresAt | date: "dd MMM yyyy, h:mm a" }}</dd>
+        </div>
+      </dl>
+      @if (store.tiktok().scopes?.length) {
+        <div class="permissions">
+          <small>PERMISOS AUTORIZADOS</small>
+          <div>
+            @for (scope of store.tiktok().scopes; track scope) {
+              <span>{{ scope }}</span>
+            }
+          </div>
+        </div>
+      }
       <button class="danger disconnect" [disabled]="store.busy()" [attr.aria-busy]="store.isLoading('tiktok')" (click)="store.disconnectTikTok()">
         @if (store.isLoading("tiktok")) { <span class="spinner spinner-dark"></span> Desconectando… } @else { Desconectar cuenta }
       </button>

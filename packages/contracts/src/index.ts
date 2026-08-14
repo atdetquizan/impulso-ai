@@ -104,6 +104,12 @@ export interface SchedulePublicationRequest {
   musicTrackId: string;
 }
 
+export interface SchedulePublicationBatchRequest {
+  startAt: string;
+  intervalMinutes: number;
+  musicTrackId: string;
+}
+
 export interface GeneratedConcept {
   quote: string;
   caption: string;
@@ -128,6 +134,9 @@ export interface TikTokConnectionStatus {
   connected: boolean;
   pkceRequired?: boolean;
   displayName?: string | null;
+  avatarUrl?: string | null;
+  openId?: string | null;
   expiresAt?: string | null;
   scopes?: string[];
+  connectedAt?: string | null;
 }

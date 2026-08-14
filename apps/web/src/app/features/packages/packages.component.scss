@@ -229,6 +229,126 @@
   color: #767e79;
 }
 
+.bulk-schedule {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid #c4d1c7;
+  border-radius: 14px;
+  background: #f7faf6;
+}
+
+.bulk-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bulk-heading h3 {
+  margin: 3px 0 0;
+}
+
+.bulk-heading > span {
+  padding: 5px 9px;
+  border-radius: 99px;
+  background: #dcece0;
+  color: #235b3c;
+  font-size: 9px;
+  font-weight: 750;
+}
+
+.bulk-help {
+  margin: 8px 0 14px;
+  color: #69736d;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.bulk-fields {
+  display: grid;
+  grid-template-columns: 1fr 0.75fr 1fr;
+  gap: 10px;
+}
+
+.bulk-fields label {
+  display: grid;
+  gap: 5px;
+  color: #555f59;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.bulk-fields input,
+.bulk-fields select {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #cad4cc;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.schedule-preview {
+  display: grid;
+  gap: 7px;
+  margin: 14px 0;
+}
+
+.schedule-preview > div {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 8px;
+  border-radius: 9px;
+  background: #edf3ed;
+}
+
+.schedule-preview span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #2f7354;
+  color: #fff;
+  font-size: 9px;
+}
+
+.schedule-preview p {
+  overflow: hidden;
+  margin: 0;
+  color: #59635d;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-preview strong {
+  color: #24553d;
+  font-size: 9px;
+}
+
+.bulk-checks {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.bulk-checks span {
+  color: #a1463b;
+  font-size: 9px;
+}
+
+.bulk-checks span.ok {
+  color: #226344;
+}
+
+.schedule-package {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+}
+
 .review-empty {
   margin-top: 120px;
 }
@@ -246,6 +366,10 @@
 
   .package-images {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .bulk-fields {
+    grid-template-columns: 1fr;
   }
 
   .package-image {

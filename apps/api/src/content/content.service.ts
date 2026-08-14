@@ -10,7 +10,7 @@ import {
   CONTENT_AI_PROVIDER,
   type ContentAiProvider,
 } from "./content-ai.provider.js";
-import type { GenerateBatchDto, ScheduleDto } from "./dto.js";
+import type { GenerateBatchDto, ScheduleBatchDto, ScheduleDto } from "./dto.js";
 
 type DatabaseRow = Record<string, any>;
 
@@ -284,6 +284,59 @@ export class ContentService {
     );
     await this.syncBatchStatus(data.batch_id);
     return this.withPreviewUrls(data);
+  }
+
+  async scheduleBatch(userId: string, batchId: string, dto: ScheduleBatchDto) {
+    const startAt = new Date(dto.startAt);
+    if (startAt.getTime() <= Date.now()) {
+      throw new BadRequestException("La fecha inicial debe estar en el futuro.");
+    }
+
+    const [{ data: publications, error: publicationsError }, { data: track }, { data: connection }] =
+      await Promise.all([
+        this.db.admin
+          .from("publications")
+          .select("id,status")
+          .eq("batch_id", batchId)
+          .eq("user_id", userId)
+          .eq("is_current", true)
+          .order("created_at", { ascending: true }),
+        this.db.admin
+          .from("music_tracks")
+          .select("id")
+          .eq("id", dto.musicTrackId)
+          .eq("active", true)
+          .eq("validation_status", "verified")
+          .maybeSingle(),
+        this.db.admin
+          .from("tiktok_connections")
+          .select("id")
+          .eq("user_id", userId)
+          .maybeSingle(),
+      ]);
+    if (publicationsError) throw publicationsError;
+    if (!publications?.length) throw new NotFoundException("Paquete no encontrado o vacío.");
+    if (publications.some((publication: DatabaseRow) => publication.status !== "approved")) {
+      throw new BadRequestException("Todas las publicaciones vigentes del paquete deben estar aprobadas.");
+    }
+    if (!track) throw new BadRequestException("Selecciona una pista activa y verificada.");
+    if (!connection) throw new BadRequestException("Conecta tu cuenta de TikTok antes de programar el paquete.");
+
+    for (const [index, publication] of publications.entries()) {
+      const scheduledFor = new Date(
+        startAt.getTime() + index * dto.intervalMinutes * 60_000,
+      ).toISOString();
+      await this.transition(
+        userId,
+        publication.id,
+        ["approved"],
+        "scheduled",
+        { scheduled_for: scheduledFor, music_track_id: dto.musicTrackId },
+        "batch_scheduled",
+      );
+    }
+    await this.syncBatchStatus(batchId);
+    return this.findBatch(userId, batchId);
   }
 
   async retryPublication(userId: string, id: string) {

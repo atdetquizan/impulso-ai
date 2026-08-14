@@ -5,6 +5,7 @@ import type {
   GenerateBatchRequest,
   Publication,
   PublicationBatch,
+  SchedulePublicationBatchRequest,
   SchedulePublicationRequest,
 } from "@impulso/contracts";
 import { environment } from "../environments/environment";
@@ -155,6 +156,16 @@ export class PublicationsApiService {
       this.http.patch<ApiPublication>(
         `${environment.apiUrl}/publication-batches/${id}/approve`,
         {},
+        this.options(),
+      ),
+    );
+    return this.mapBatch(row);
+  }
+  async scheduleBatch(id: string, body: SchedulePublicationBatchRequest) {
+    const row = await firstValueFrom(
+      this.http.patch<ApiPublication>(
+        `${environment.apiUrl}/publication-batches/${id}/schedule`,
+        body,
         this.options(),
       ),
     );

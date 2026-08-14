@@ -1,6 +1,7 @@
-import { Controller, Get, Param, Patch, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Req } from "@nestjs/common";
 import type { AuthenticatedRequest } from "../auth/auth.guard.js";
 import { ContentService } from "./content.service.js";
+import { ScheduleBatchDto } from "./dto.js";
 
 @Controller("publication-batches")
 export class PublicationBatchesController {
@@ -19,6 +20,15 @@ export class PublicationBatchesController {
   @Patch(":id/approve")
   approve(@Req() req: AuthenticatedRequest, @Param("id") id: string) {
     return this.content.approveBatch(req.user.id, id);
+  }
+
+  @Patch(":id/schedule")
+  schedule(
+    @Req() req: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Body() dto: ScheduleBatchDto,
+  ) {
+    return this.content.scheduleBatch(req.user.id, id, dto);
   }
 
   @Post(":id/generate-next")

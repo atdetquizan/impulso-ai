@@ -45,6 +45,11 @@
         maxlength="32"
         placeholder="Ej. Impulso IA"
       />
+      @if (store.tiktok().connected && store.tiktok().displayName) {
+        <small class="tiktok-brand-hint">
+          ✓ Nombre tomado de tu cuenta TikTok conectada
+        </small>
+      }
     </label>
     <label>
       Tema
@@ -285,7 +290,7 @@
               Música
               <select [(ngModel)]="store.musicTrackId">
                 <option value="">Selecciona una pista licenciada</option>
-                @for (track of store.musicTracks(); track track.id) {
+                @for (track of store.verifiedMusicTracks(); track track.id) {
                   <option [value]="track.id">
                     {{ track.name }} · {{ track.durationSeconds }} s
                   </option>
@@ -293,7 +298,7 @@
               </select>
             </label>
             @if (store.musicTrackId) {
-              @for (track of store.musicTracks(); track track.id) {
+              @for (track of store.verifiedMusicTracks(); track track.id) {
                 @if (track.id === store.musicTrackId && track.previewUrl) {
                   <audio
                     class="schedule-audio"
@@ -305,8 +310,8 @@
               }
             }
             <div class="schedule-checks">
-              <span [class.ok]="store.musicTracks().length">
-                {{ store.musicTracks().length ? "✓ Música verificada" : "! Falta música" }}
+              <span [class.ok]="store.verifiedMusicTracks().length">
+                {{ store.verifiedMusicTracks().length ? "✓ Música verificada" : "! Falta música" }}
               </span>
               <span [class.ok]="store.tiktok().connected">
                 {{ store.tiktok().connected ? "✓ TikTok conectado" : "! Falta TikTok" }}
@@ -317,7 +322,7 @@
               [disabled]="
                 store.busy() ||
                 !store.tiktok().connected ||
-                !store.musicTracks().length
+                !store.verifiedMusicTracks().length
               "
               [attr.aria-busy]="store.isLoading('schedule')"
               (click)="store.schedule()"

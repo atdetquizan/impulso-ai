@@ -24,6 +24,7 @@ export type AsyncAction =
   | "approve"
   | "approveBatch"
   | "schedule"
+  | "scheduleBatch"
   | "retry"
   | "musicUpload"
   | "tiktok";
@@ -57,13 +58,20 @@ export class WorkspaceStore {
       ? this.items()
       : this.items().filter((item) => item.status === this.filter()),
   );
+  readonly verifiedMusicTracks = computed(() =>
+    this.musicTracks().filter(
+      (track) => track.active && track.validationStatus === "verified",
+    ),
+  );
 
   batchName = "";
   brandName = "IMPULSO IA";
   theme = "Motivación diaria";
   tone: "cercano" | "energico" | "reflexivo" = "cercano";
   count: 2 | 3 = 3;
-  scheduledFor = "";
+  scheduledFor = this.defaultScheduleDate();
+  batchScheduledFor = this.defaultScheduleDate();
+  batchIntervalMinutes = 300;
   musicTrackId = "";
   musicName = "";
   musicLicense = "";
@@ -167,13 +175,20 @@ export class WorkspaceStore {
       ]);
       this.musicTracks.set(music);
       this.tiktok.set(tiktok);
-      if (!this.musicTrackId && music.length) this.musicTrackId = music[0].id;
+      if (!this.musicTrackId && this.verifiedMusicTracks().length) {
+        this.musicTrackId = this.verifiedMusicTracks()[0].id;
+      }
+      const tiktokName = tiktok.displayName?.trim();
+      if (tiktok.connected && tiktokName && (!this.brandName.trim() || this.brandName === "IMPULSO IA")) {
+        this.brandName = tiktokName.slice(0, 32);
+      }
     } catch (error) {
       this.flash(this.errorText(error), "error");
     }
   }
 
   async generate() {
+    let activeBatchId: string | null = null;
     await this.withLoading("generate", async () => {
       try {
         let batch = await this.api.generate({
@@ -183,6 +198,7 @@ export class WorkspaceStore {
           tone: this.tone,
           count: this.count,
         });
+        activeBatchId = batch.id;
         this.generationProgress.set({ current: 0, total: this.count });
         this.batches.update((rows) => [batch, ...rows]);
         this.selectedBatch.set(batch);
@@ -211,6 +227,19 @@ export class WorkspaceStore {
         );
       } catch (error) {
         this.generationProgress.set(null);
+        await this.load();
+        if (activeBatchId) {
+          this.selectedBatch.set(
+            this.batches().find((item) => item.id === activeBatchId) ?? null,
+          );
+          const failed = this.items().find(
+            (item) => item.batchId === activeBatchId && item.status === "failed",
+          );
+          if (failed) {
+            this.selected.set(failed);
+            this.filter.set("failed");
+          }
+        }
         this.flash(this.errorText(error), "error");
       }
     });
@@ -317,6 +346,42 @@ export class WorkspaceStore {
     });
   }
 
+  async scheduleSelectedBatch() {
+    const batch = this.selectedBatch();
+    if (!batch || !this.batchScheduledFor || !this.musicTrackId) {
+      return this.flash("Selecciona fecha inicial, intervalo y música.", "error");
+    }
+    await this.withLoading("scheduleBatch", async () => {
+      try {
+        await this.api.scheduleBatch(batch.id, {
+          startAt: new Date(this.batchScheduledFor).toISOString(),
+          intervalMinutes: this.batchIntervalMinutes,
+          musicTrackId: this.musicTrackId,
+        });
+        await this.load();
+        this.selectedBatch.set(
+          this.batches().find((item) => item.id === batch.id) ?? null,
+        );
+        this.flash(`${batch.publications.length} publicaciones programadas.`);
+      } catch (error) {
+        this.flash(this.errorText(error), "error");
+      }
+    });
+  }
+
+  batchSchedulePreview(batch: PublicationBatch) {
+    const start = new Date(this.batchScheduledFor);
+    if (Number.isNaN(start.getTime())) return [];
+    return [...batch.publications]
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+      .map((publication, index) => ({
+        publication,
+        scheduledFor: new Date(
+          start.getTime() + index * this.batchIntervalMinutes * 60_000,
+        ),
+      }));
+  }
+
   async retryPublication() {
     const item = this.selected();
     if (!item || item.status !== "failed") return;
@@ -352,6 +417,9 @@ export class WorkspaceStore {
 
   select(item: Publication) {
     this.selected.set(item);
+    if (item.status === "approved" && !this.scheduledFor) {
+      this.scheduledFor = this.defaultScheduleDate();
+    }
   }
 
   selectBatch(batch: PublicationBatch) {
@@ -414,6 +482,14 @@ export class WorkspaceStore {
         batches[0] ??
         null,
     );
+  }
+
+  private defaultScheduleDate() {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    date.setHours(9, 0, 0, 0);
+    const pad = (value: number) => String(value).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
   }
 
   private async consumeTikTokCallback() {
@@ -479,12 +555,16 @@ export class WorkspaceStore {
         typeof error.error.code === "string"
           ? error.error.code
           : null;
-      const safeAuthCodes = new Set([
+      const safeApiCodes = new Set([
         "AUTH_EMAIL_DELIVERY_FAILED",
         "AUTH_MAGIC_LINK_FAILED",
         "AUTH_RATE_LIMIT_UNAVAILABLE",
+        "AI_RATE_LIMIT",
+        "AI_AUTH_ERROR",
+        "AI_IMAGE_BAD_INPUT",
+        "AI_IMAGE_PROVIDER_ERROR",
       ]);
-      if (apiMessage && (error.status < 500 || (apiCode && safeAuthCodes.has(apiCode)))) {
+      if (apiMessage && (error.status < 500 || (apiCode && safeApiCodes.has(apiCode)))) {
         return apiMessage;
       }
       if (error.status === 0) {

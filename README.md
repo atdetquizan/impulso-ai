@@ -95,6 +95,11 @@ CLOUDFLARE_IMAGE_MODEL=@cf/black-forest-labs/flux-1-schnell
 CLOUDFLARE_IMAGE_STEPS=4
 ```
 
+Para `@cf/black-forest-labs/flux-1-schnell`, la API envía el parámetro oficial
+`steps`. No uses `num_steps`: Cloudflare lo rechaza como una propiedad no
+permitida. Con otros modelos, la aplicación envía solamente `prompt` hasta que
+su esquema específico sea incorporado explícitamente.
+
 5. Reinicia NestJS. No es necesario modificar Angular: todas las llamadas continúan pasando por `/api`.
 
 El backend solicita la imagen sin texto y FFmpeg la escala y recorta a `1080x1920` al crear el video. El límite diario gratuito de Workers AI puede responder `429`; la API conserva la publicación como `failed` y devuelve un mensaje comprensible para poder regenerarla posteriormente.
@@ -130,6 +135,7 @@ SMTP_USER=tu_cuenta@gmail.com
 SMTP_PASS=tu_contrasena_de_aplicacion
 EMAIL_FROM="Impulso IA <tu_cuenta@gmail.com>"
 FRONTEND_URL=https://tu-frontend.example.com
+AUTH_COOKIE_SECURE=true
 AUTH_MAGIC_LINK_COOLDOWN_SECONDS=60
 AUTH_MAGIC_LINK_TTL_MINUTES=15
 AUTH_ACCESS_TOKEN_TTL_SECONDS=900
@@ -137,7 +143,9 @@ AUTH_REFRESH_TOKEN_TTL_DAYS=30
 AUTH_TOKEN_SECRET=un_secreto_aleatorio_de_al_menos_32_caracteres
 ```
 
-Genera `AUTH_TOKEN_SECRET` una sola vez con `openssl rand -base64 48`, guárdalo como secreto de producción y no lo cambies mientras existan sesiones activas. El enlace llega directamente a `/api/auth/verify`, se consume una sola vez y la respuesta impide caché y envío del `Referer` antes de redirigir.
+Genera `AUTH_TOKEN_SECRET` una sola vez con `openssl rand -base64 48`, guárdalo como secreto de producción y no lo cambies mientras existan sesiones activas. El enlace llega directamente a `/api/auth/verify`, se consume una sola vez, crea las cookies `HttpOnly` y redirige a `/publications?session=created`. Angular valida esas cookies mediante `/api/auth/me`, elimina el parámetro de la URL y recién entonces habilita el espacio de trabajo.
+
+En desarrollo con `http://localhost:4200`, usa `AUTH_COOKIE_SECURE=false`. En producción HTTPS puedes omitir la variable: la API activa automáticamente el atributo `Secure` al detectar que `FRONTEND_URL` comienza con `https://`.
 
 En Vercel pega la contraseña de aplicación sin comillas. El backend no ejecuta una conexión de prueba SMTP durante el arranque; se conecta únicamente cuando alguien solicita el enlace, evitando demoras de inicialización. Si el envío falla, la reserva del límite se libera y el usuario puede reintentar.
 

@@ -28,7 +28,10 @@ export class AuthService {
     config: ConfigService,
   ) {
     this.frontendUrl = (config.get<string>('FRONTEND_URL') ?? 'http://localhost:4200').replace(/\/$/, '');
-    this.secureCookies = config.get<string>('NODE_ENV') === 'production';
+    const configuredCookieSecurity = config.get<string>('AUTH_COOKIE_SECURE');
+    this.secureCookies = configuredCookieSecurity === undefined
+      ? new URL(this.frontendUrl).protocol === 'https:'
+      : String(configuredCookieSecurity).toLowerCase() === 'true';
     this.magicLinkCooldownSeconds = this.positiveInteger(config.get('AUTH_MAGIC_LINK_COOLDOWN_SECONDS'), 60);
     this.magicLinkTtlMinutes = this.positiveInteger(config.get('AUTH_MAGIC_LINK_TTL_MINUTES'), 15);
     this.refreshTokenTtlDays = this.positiveInteger(config.get('AUTH_REFRESH_TOKEN_TTL_DAYS'), 30);
@@ -92,7 +95,10 @@ export class AuthService {
     response.setHeader('Referrer-Policy', 'no-referrer');
     try {
       await this.createSession(magicToken, response);
-      return response.redirect(HttpStatus.SEE_OTHER, `${this.frontendUrl}/publications`);
+      return response.redirect(
+        HttpStatus.SEE_OTHER,
+        `${this.frontendUrl}/publications?session=created`,
+      );
     } catch (error) {
       this.logger.warn(`Enlace de acceso rechazado: ${this.errorMessage(error)}`);
       this.clearCookies(response);

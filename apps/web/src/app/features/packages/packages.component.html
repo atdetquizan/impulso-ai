@@ -115,6 +115,77 @@
             }
           </button>
         }
+        @if (batch.status === "approved") {
+          <section class="bulk-schedule">
+            <div class="bulk-heading">
+              <div>
+                <p class="eyebrow">PROGRAMACIÓN MASIVA</p>
+                <h3>Programa el paquete completo</h3>
+              </div>
+              <span>{{ batch.publications.length }} publicaciones</span>
+            </div>
+            <p class="bulk-help">
+              Sugerimos mañana desde las 9:00 a. m., con separación de 5 horas.
+              Puedes cambiar ambos valores antes de confirmar.
+            </p>
+            <div class="bulk-fields">
+              <label>
+                Primera publicación
+                <input type="datetime-local" [(ngModel)]="store.batchScheduledFor" />
+              </label>
+              <label>
+                Separación
+                <select [(ngModel)]="store.batchIntervalMinutes">
+                  <option [ngValue]="180">Cada 3 horas</option>
+                  <option [ngValue]="300">Cada 5 horas</option>
+                  <option [ngValue]="360">Cada 6 horas</option>
+                  <option [ngValue]="720">Cada 12 horas</option>
+                  <option [ngValue]="1440">Una por día</option>
+                </select>
+              </label>
+              <label class="bulk-music">
+                Música para el paquete
+                <select [(ngModel)]="store.musicTrackId">
+                  <option value="">Selecciona una pista licenciada</option>
+                  @for (track of store.verifiedMusicTracks(); track track.id) {
+                    <option [value]="track.id">
+                      {{ track.name }} · {{ track.durationSeconds }} s
+                    </option>
+                  }
+                </select>
+              </label>
+            </div>
+            <div class="schedule-preview">
+              @for (slot of store.batchSchedulePreview(batch); track slot.publication.id; let position = $index) {
+                <div>
+                  <span>{{ position + 1 }}</span>
+                  <p>{{ slot.publication.quote }}</p>
+                  <strong>{{ slot.scheduledFor | date: "EEE dd MMM, h:mm a" }}</strong>
+                </div>
+              }
+            </div>
+            <div class="bulk-checks">
+              <span [class.ok]="store.tiktok().connected">
+                {{ store.tiktok().connected ? "✓ TikTok conectado" : "! Falta TikTok" }}
+              </span>
+              <span [class.ok]="store.verifiedMusicTracks().length">
+                {{ store.verifiedMusicTracks().length ? "✓ Música verificada" : "! Falta música" }}
+              </span>
+            </div>
+            <button
+              class="primary schedule-package"
+              [disabled]="store.busy() || !store.tiktok().connected || !store.verifiedMusicTracks().length || !store.batchScheduledFor"
+              [attr.aria-busy]="store.isLoading('scheduleBatch')"
+              (click)="store.scheduleSelectedBatch()"
+            >
+              @if (store.isLoading("scheduleBatch")) {
+                <span class="spinner" aria-hidden="true"></span> Programando paquete…
+              } @else {
+                Programar {{ batch.publications.length }} publicaciones
+              }
+            </button>
+          </section>
+        }
         <p class="safety">
           Abre cualquier imagen para aprobarla, rechazarla o regenerarla desde
           Publicaciones.

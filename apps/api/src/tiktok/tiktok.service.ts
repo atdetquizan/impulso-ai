@@ -5,6 +5,11 @@ import { SupabaseService } from '../supabase/supabase.service.js';
 import { TokenCryptoService } from './token-crypto.service.js';
 
 type TokenResponse = { access_token: string; refresh_token: string; open_id: string; expires_in: number; refresh_expires_in?: number; scope: string };
+type TikTokBasicProfile = {
+  open_id?: string;
+  display_name?: string;
+  avatar_url?: string;
+};
 
 @Injectable()
 export class TikTokService {
@@ -56,10 +61,11 @@ export class TikTokService {
     if (!response.ok || !tokens.access_token) {
       throw new BadGatewayException(tokens.error_description ?? `TikTok OAuth falló con estado ${response.status}.`);
     }
-    const displayName = await this.fetchDisplayName(tokens.access_token);
+    const profile = await this.fetchBasicProfile(tokens.access_token);
     const { error } = await this.db.admin.from('tiktok_connections').upsert({
       user_id: userId, open_id: tokens.open_id,
-      display_name: displayName,
+      display_name: profile?.display_name ?? null,
+      avatar_url: profile?.avatar_url ?? null,
       access_token_encrypted: this.crypto.encrypt(tokens.access_token),
       refresh_token_encrypted: this.crypto.encrypt(tokens.refresh_token),
       expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
@@ -70,8 +76,23 @@ export class TikTokService {
   }
 
   async connectionStatus(userId: string) {
-    const { data } = await this.db.admin.from('tiktok_connections').select('display_name,expires_at,scopes').eq('user_id', userId).maybeSingle();
-    return { configured: this.configured, connected: Boolean(data), pkceRequired: this.pkceEnabled, ...data };
+    const { data, error } = await this.db.admin
+      .from('tiktok_connections')
+      .select('open_id,display_name,avatar_url,expires_at,scopes,created_at')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) throw error;
+    return {
+      configured: this.configured,
+      connected: Boolean(data),
+      pkceRequired: this.pkceEnabled,
+      displayName: data?.display_name ?? null,
+      avatarUrl: data?.avatar_url ?? null,
+      openId: data?.open_id ?? null,
+      expiresAt: data?.expires_at ?? null,
+      scopes: data?.scopes ?? [],
+      connectedAt: data?.created_at ?? null,
+    };
   }
 
   async disconnect(userId: string) {
@@ -133,11 +154,15 @@ export class TikTokService {
     return tokens.access_token;
   }
 
-  private async fetchDisplayName(token: string) {
+  private async fetchBasicProfile(token: string): Promise<TikTokBasicProfile | null> {
     try {
-      const response = await fetch('https://open.tiktokapis.com/v2/user/info/?fields=display_name', { headers: { Authorization: `Bearer ${token}` } });
-      const payload = await response.json() as { data?: { user?: { display_name?: string } } };
-      return payload.data?.user?.display_name ?? null;
+      const response = await fetch(
+        'https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url',
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (!response.ok) return null;
+      const payload = await response.json() as { data?: { user?: TikTokBasicProfile } };
+      return payload.data?.user ?? null;
     } catch { return null; }
   }
 }

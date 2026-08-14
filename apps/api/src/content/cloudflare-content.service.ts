@@ -158,10 +158,11 @@ export class CloudflareContentService implements ContentAiProvider {
   }
 
   async generateImage(prompt: string): Promise<Buffer> {
-    const result = await this.runModel<CloudflareImageResult>(this.imageModel, {
-      prompt: `${prompt}. Cinematic composition suitable for a 9:16 vertical crop. Keep a clean central area for a motivational quote overlay. No letters, words, logos or watermarks.`,
-      num_steps: this.imageSteps,
-    });
+    const imagePrompt = `${prompt}. Cinematic composition suitable for a 9:16 vertical crop. Keep a clean central area for a motivational quote overlay. No letters, words, logos or watermarks.`;
+    const result = await this.runModel<CloudflareImageResult>(
+      this.imageModel,
+      this.imageInput(imagePrompt),
+    );
 
     if (!result.image) {
       throw new BadGatewayException(
@@ -169,6 +170,14 @@ export class CloudflareContentService implements ContentAiProvider {
       );
     }
     return Buffer.from(result.image, "base64");
+  }
+
+  private imageInput(prompt: string): Record<string, unknown> {
+    const input: Record<string, unknown> = { prompt };
+    if (this.imageModel === "@cf/black-forest-labs/flux-1-schnell") {
+      input.steps = this.imageSteps;
+    }
+    return input;
   }
 
   private async runModel<T>(
@@ -207,17 +216,54 @@ export class CloudflareContentService implements ContentAiProvider {
         ?.map((item) => item.message)
         .filter(Boolean)
         .join("; ");
+      const diagnostics = {
+        provider: this.providerName,
+        model,
+        httpStatus: response.status,
+      };
+      this.logger.error(
+        `Cloudflare Workers AI rechazó la imagen: ${JSON.stringify({ ...diagnostics, detail: detail || null })}`,
+      );
       if (response.status === 429) {
         throw new HttpException(
-          detail ||
-            "Se alcanzó temporalmente el límite de Cloudflare Workers AI. Intenta nuevamente más tarde.",
+          {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            code: "AI_RATE_LIMIT",
+            message:
+              "Se alcanzó temporalmente el límite de generación de imágenes. Intenta nuevamente en unos minutos.",
+            diagnostics,
+          },
           HttpStatus.TOO_MANY_REQUESTS,
         );
       }
-      throw new BadGatewayException(
-        detail ||
-          `Cloudflare Workers AI rechazó la solicitud (HTTP ${response.status}).`,
-      );
+      if (response.status === 401 || response.status === 403) {
+        throw new BadGatewayException({
+          statusCode: HttpStatus.BAD_GATEWAY,
+          code: "AI_AUTH_ERROR",
+          message:
+            "No se pudo autorizar la generación de imágenes. Revisa la configuración de Cloudflare Workers AI.",
+          diagnostics,
+        });
+      }
+      if (
+        response.status === 400 ||
+        /bad input|additional|unevaluated properties|not allowed/i.test(detail ?? "")
+      ) {
+        throw new BadGatewayException({
+          statusCode: HttpStatus.BAD_GATEWAY,
+          code: "AI_IMAGE_BAD_INPUT",
+          message:
+            "El modelo de imágenes rechazó su configuración. Verifica que CLOUDFLARE_IMAGE_MODEL sea compatible con esta versión.",
+          diagnostics,
+        });
+      }
+      throw new BadGatewayException({
+        statusCode: HttpStatus.BAD_GATEWAY,
+        code: "AI_IMAGE_PROVIDER_ERROR",
+        message:
+          "No se pudo generar la imagen en este momento. Intenta regenerarla en unos minutos.",
+        diagnostics,
+      });
     }
     return payload.result;
   }
