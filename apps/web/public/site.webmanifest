@@ -1,0 +1,21 @@
+{
+  "name": "Impulso IA",
+  "short_name": "Impulso IA",
+  "description": "Creación, revisión y programación de contenido con control humano.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fffdf8",
+  "theme_color": "#244f3d",
+  "icons": [
+    {
+      "src": "/icons/impulso-ia-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/impulso-ia-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -3,9 +3,14 @@
 }
 
 .tiktok-brand-hint {
+  display: block;
+  overflow: hidden;
   color: #2c6c4c;
   font-size: 8px;
   font-weight: 650;
+  line-height: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .generator {
@@ -52,20 +57,32 @@
 
 .fields {
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-columns:
+    minmax(180px, 1.1fr)
+    minmax(170px, 0.9fr)
+    minmax(220px, 1.15fr)
+    minmax(160px, 0.8fr)
+    minmax(145px, 0.72fr)
+    minmax(190px, 1fr);
   gap: 11px;
-  align-items: end;
+  align-items: start;
 }
 
-.fields label:nth-child(1) { grid-column: span 3; }
-.fields label:nth-child(2) { grid-column: span 2; }
-.fields label:nth-child(3) { grid-column: span 3; }
-.fields label:nth-child(4) { grid-column: span 2; }
-.fields label:nth-child(5) { grid-column: span 2; }
+.fields label {
+  grid-template-rows: 13px 40px 12px;
+  align-content: start;
+}
+
+.fields input,
+.fields select {
+  height: 40px;
+  min-width: 0;
+}
 
 .fields .primary {
   height: 40px;
-  grid-column: 10 / 13;
+  min-width: 0;
+  margin-top: 34px;
 }
 
 .live-generation {
@@ -451,15 +468,13 @@
 
 @media (max-width: 1150px) {
   .fields {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .fields label:nth-child(1),
-  .fields label:nth-child(3) { grid-column: span 3; }
-  .fields label:nth-child(2),
-  .fields label:nth-child(4),
-  .fields label:nth-child(5) { grid-column: span 2; }
-  .fields .primary { grid-column: 4 / 7; }
+  .fields label:nth-child(n),
+  .fields .primary {
+    grid-column: auto;
+  }
 }
 
 @media (max-width: 1050px) {
@@ -489,6 +504,7 @@
 
   .fields .primary {
     grid-column: 1 / -1;
+    margin-top: 0;
   }
 
   .cards {
@@ -510,6 +526,10 @@
   }
 
   .fields label:nth-child(n) { grid-column: auto; }
+
+  .fields .primary {
+    grid-column: auto;
+  }
 
   .error-actions { grid-template-columns: 1fr; }
 
